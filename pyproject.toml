@@ -1,0 +1,10 @@
+[project]
+name = "city-learn-challenge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "citylearn==2.1b9",
+    "numpy==1.26.4",
+]
