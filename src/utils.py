@@ -1,6 +1,10 @@
 import pandas as pd
 
+
 def format_evaluation(evaluation_data: dict) -> pd.DataFrame:
+    """
+    Format evaluation data into a dataframe.
+    """
     kpis = pd.DataFrame.from_dict(
         evaluation_data, orient="index", columns=["value", "display_name", "weight"]
     )

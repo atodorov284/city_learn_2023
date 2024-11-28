@@ -6,9 +6,13 @@ https://www.citylearn.net/citylearn_challenge/2023.html
 from typing import Any, List, Mapping
 
 import numpy as np
+import pandas as pd
 from citylearn.base import Environment
 from citylearn.citylearn import CityLearnEnv
 from gym import spaces
+
+import wandb
+from utils import format_evaluation
 
 
 class BaseAgent(Environment):
@@ -155,6 +159,16 @@ class BaseAgent(Environment):
             Indicator to take deterministic actions in the final episode.
         """
 
+        wandb.init(
+            project=f"{self.__class__.__name__}agent-learning",
+            name="LearningCurvePerTimestep",
+            config={
+                "episodes": episodes or 1,
+                "deterministic": deterministic or False,
+                "deterministic_finish": deterministic_finish or False,
+            },
+        )
+
         episodes = 1 if episodes is None else episodes
         deterministic_finish = (
             False if deterministic_finish is None else deterministic_finish
@@ -190,7 +204,20 @@ class BaseAgent(Environment):
 
                 time_step += 1
 
-            rewards = np.array(rewards_list, dtype="float")
+                # wandb.log(
+                #     {
+                #         f"Episode {episode + 1}/Timestep": time_step,
+                #         f"Reward (Episode {episode + 1})": rewards[0],
+                #     }
+                # )
+            total_episode_reward = np.mean(rewards_list)
+            wandb.log(
+                {
+                    "Episode": episode + 1,
+                    "Mean Reward": total_episode_reward,
+                }
+            )
+        wandb.finish()
 
     def predict(
         self, observations: List[List[float]], deterministic: bool = None
@@ -210,6 +237,60 @@ class BaseAgent(Environment):
         """
 
         pass
+
+    def evaluate_agent(self) -> pd.DataFrame:
+        """
+        Evaluates the agent using CityLearn's challenge evaluation and logs the results.
+
+        Returns
+        -------
+        evaluation_data : pd.DataFrame
+            Formatted evaluation data as a DataFrame.
+        """
+        evaluation_data = self.env.evaluate_citylearn_challenge()
+
+        evaluation_data = format_evaluation(evaluation_data)
+
+        wandb.init(
+            project=f"{self.__class__.__name__}-evaluation", name="EvaluationMetrics"
+        )
+
+        metrics = evaluation_data["display_name"].tolist()
+        values = evaluation_data["value"].tolist()
+        weights = evaluation_data["weight"].tolist()
+
+        values = [v if pd.notna(v) else 0 for v in values]
+        weights = [w if pd.notna(w) else 0 for w in weights]
+
+        for metric, value, weight in zip(metrics, values, weights):
+            wandb.log({f"{metric}": value, f"{metric} Weight": weight})
+
+        metric_table = wandb.Table(
+            data=[[m, v] for m, v in zip(metrics, values)], columns=["Metric", "Value"]
+        )
+        wandb.log(
+            {
+                "Metrics Bar Plot": wandb.plot.bar(
+                    metric_table, "Metric", "Value", title="Evaluation Metrics"
+                )
+            }
+        )
+
+        weight_table = wandb.Table(
+            data=[[m, w] for m, w in zip(metrics, weights)],
+            columns=["Metric", "Weight"],
+        )
+        wandb.log(
+            {
+                "Metric Weights Bar Plot": wandb.plot.bar(
+                    weight_table, "Metric", "Weight", title="Metric Weights"
+                )
+            }
+        )
+
+        wandb.finish()
+
+        return evaluation_data
 
     def next_time_step(self) -> None:
         """

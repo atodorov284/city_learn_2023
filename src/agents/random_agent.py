@@ -7,9 +7,9 @@ from agents.base_agent import BaseAgent
 
 class RandomAgent(BaseAgent):
     def __init__(self, env: CityLearnEnv, **kwargs: Any) -> None:
-        '''
+        """
         Initialize the environment and set up the random agent.
-        '''
+        """
         super().__init__(env, **kwargs)
 
     def predict(
