@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from citylearn.citylearn import CityLearnEnv
+from citylearn.agents.sac import SAC
 
 from agents.random_agent import RandomAgent
 
@@ -17,7 +18,8 @@ if __name__ == "__main__":
     env = CityLearnEnv(
         schema=schema_path, root_directory=root_directory, random_seed=SEED
     )
-    model = RandomAgent(env)
+    #model = RandomAgent(env)
+    model = SAC(env)
 
     model.learn(episodes=20)
 
