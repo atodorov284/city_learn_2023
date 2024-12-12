@@ -14,8 +14,8 @@ LOG_STD_MAX = 1
 class SACAgent(Agent):
     def __init__(
         self,
-        observation_space_dim: list,
-        action_space_dim: list,
+        observation_space_dim: int,
+        action_space_dim: int,
         hidden_dim: int = 256,
         learning_rate: float = 3e-4,
         alpha: float = 0.2,
@@ -23,6 +23,8 @@ class SACAgent(Agent):
         tau: float = 0.05,
         buffer_size: int = 100000,
         batch_size: int = 32,
+        action_space = None,
+        exploration_timesteps: int = 1000
     ) -> None:
         """Initialize the Soft-Actor Critic agent"""
         super().__init__(observation_space_dim, action_space_dim)
@@ -30,9 +32,10 @@ class SACAgent(Agent):
         self.gamma = gamma
         self.tau = tau
         self.batch_size = batch_size
+        self.action_space_dim = action_space_dim
 
         self.actor = Actor(
-            observation_space_dim, hidden_dim, action_space_dim
+            observation_space_dim, hidden_dim, action_space_dim, action_space=action_space
         )
         self.critic = Critic(
             observation_space_dim, action_space_dim, hidden_dim
@@ -44,7 +47,7 @@ class SACAgent(Agent):
         self.critic_target.load_state_dict(self.critic.state_dict())
         
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=learning_rate)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=learning_rate)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=learning_rate * 2)
         
         # Replay Buffer
         self.replay_buffer = ReplayBuffer(buffer_size)
@@ -54,14 +57,21 @@ class SACAgent(Agent):
         
         # Tracking
         self.total_steps = 0
+        self.exploration_timesteps = exploration_timesteps
+        
+        # Initialize statistics for logging
+        self.running_reward_mean = 0
+        self.running_reward_std = 1
+        
+        self.reward_scale = 0.1
 
-    def select_action(self, state: np.array) -> np.array:
+    def select_action(self, state: np.array, deterministic: bool = False) -> np.array:
         """
         Select an action from the policy
         
         Args:
             state (np.array): Input state
-            deterministic (bool): Whether to use deterministic policy
+            deterministic (bool): Whether to use deterministic policy (after training)
         
         Returns:
             Numpy array of selected action
@@ -69,9 +79,20 @@ class SACAgent(Agent):
         # Convert state to tensor
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         
+        # Take a random action for a first few steps
+        if self.total_steps < self.exploration_timesteps:
+            # return action_space_dim number of values between -1 and 1
+            print("selecting random action")
+            return np.array([0,0,0,0,0,0,0,0,0])
+            actions_nr = self.action_space_dim
+            actions = (torch.rand((1, actions_nr)) * 0.1 - 0.05).cpu().numpy()[0]
+            #actions = (torch.rand((1, actions_nr)) * 2 - 1).cpu().numpy()[0]
+            print(actions)
+            return actions
+
         # Sample action from policy
         with torch.no_grad():
-            action, _ = self.actor.sample_action(state)
+            action, _ = self.actor.sample_action(state, deterministic)
         
         
         return action.detach().cpu().numpy()[0]
@@ -84,12 +105,20 @@ class SACAgent(Agent):
             
         states, actions, rewards, next_states, done = self.replay_buffer.sample(self.batch_size)
         
+        # Update running statistics
+        self.running_reward_mean = 0.99 * self.running_reward_mean + 0.01 * np.mean(rewards)
+        self.running_reward_std = 0.99 * self.running_reward_std + 0.01 * np.std(rewards)
+        
+        # Scale rewards for training
+        scaled_rewards = rewards * self.reward_scale
+        
         # Convert to tensors
         states = torch.FloatTensor(states).to(self.device)
         actions = torch.FloatTensor(actions).to(self.device)
-        rewards = torch.FloatTensor(rewards).to(self.device)
+        rewards = torch.FloatTensor(scaled_rewards).to(self.device)
         next_states = torch.FloatTensor(next_states).to(self.device)
         done = torch.FloatTensor(done).to(self.device)
+
         
         with torch.no_grad():
             next_actions, next_log_probs = self.actor.sample_action(next_states)
@@ -108,11 +137,9 @@ class SACAgent(Agent):
         # Current Q-values
         # Go from tensor of size [1,1,9] to [1,9]
         q1_current, q2_current = self.critic(states, actions.squeeze(1))
-        
-        # Critic loss
-        
-        q1_loss = F.mse_loss(q1_current.squeeze(), target_q)
-        q2_loss = F.mse_loss(q2_current.squeeze(), target_q)
+    
+        q1_loss = F.mse_loss(q1_current.squeeze(), target_q.squeeze())
+        q2_loss = F.mse_loss(q2_current.squeeze(), target_q.squeeze())
         critic_loss = q1_loss + q2_loss
         
         # Optimize critic
@@ -125,12 +152,14 @@ class SACAgent(Agent):
         min_q_pi = torch.min(q1_pi, q2_pi)
         
         # Actor loss with entropy
+        print(min_q_pi.mean())
         actor_loss = (self.alpha * log_probs - min_q_pi).mean()
         
         # Optimize actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
+        print(f"{self.total_steps}: Actor Loss: {actor_loss}, Critic Loss: {critic_loss}")
         
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)
@@ -201,7 +230,7 @@ class Critic(nn.Module):
 
 class Actor(nn.Module):
     def __init__(
-        self, observation_space_dim: int, hidden_dim: int, action_space_dim: int
+        self, observation_space_dim: int, hidden_dim: int, action_space_dim: int, action_space
     ) -> None:
         """Initialize the actor network"""
         super(Actor, self).__init__()
@@ -210,12 +239,19 @@ class Actor(nn.Module):
         self.fc_mean = nn.Linear(hidden_dim, action_space_dim)
         self.fc_logstd = nn.Linear(hidden_dim, action_space_dim)
         
-        init_w = 0.1
+        init_w = 0.003
         self.fc_mean.weight.data.uniform_(-init_w, init_w)
         self.fc_mean.bias.data.uniform_(-init_w, init_w)
 
         self.fc_logstd.weight.data.uniform_(-init_w, init_w)
         self.fc_logstd.bias.data.uniform_(-init_w, init_w)
+        
+        action_space= action_space[0]
+        self.action_scale = torch.FloatTensor(
+            (action_space.high - action_space.low) / 2.)
+        self.action_bias = torch.FloatTensor(
+            (action_space.high + action_space.low) / 2.)
+        print(f"Action Scale {self.action_scale}, Action Bias {self.action_bias}")
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
         """
@@ -236,11 +272,11 @@ class Actor(nn.Module):
         # Clamp log_std to prevent extreme values
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
         
-        mean = torch.clamp(mean, 0, 1)
+        #mean = torch.clamp(mean, 0, 1)
 
         return mean, log_std
 
-    def sample_action(self, observation: torch.Tensor) -> torch.Tensor:
+    def sample_action(self, observation: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
         """
         Sample an action from the policy
 
@@ -253,7 +289,10 @@ class Actor(nn.Module):
         """
         # Get mean and log std
         mean, log_std = self(observation)
-        
+
+        if deterministic:
+            # Use deterministic action with probability 1
+            return torch.tanh(mean), 0
         
         std = torch.exp(log_std)
         normal_dist = torch.distributions.Normal(mean, std)
@@ -262,8 +301,7 @@ class Actor(nn.Module):
 
         action = torch.tanh(z)
         
-        
-        # action = 0.4 * action + 0.4
+        action = self.action_scale * action + self.action_bias
 
         # Log probability correction for tanh
         log_prob = normal_dist.log_prob(z)

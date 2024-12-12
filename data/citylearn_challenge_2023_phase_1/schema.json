@@ -199,10 +199,10 @@
   },
   "actions": {
     "cooling_storage": {
-      "active": false
+      "active": true
     },
     "heating_storage": {
-      "active": false
+      "active": true
     },
     "dhw_storage": {
       "active": true
@@ -214,7 +214,7 @@
       "active": true
     },
     "heating_device": {
-      "active": false
+      "active": true
     }
   },
   "agent": {

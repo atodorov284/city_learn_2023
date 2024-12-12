@@ -28,10 +28,12 @@ def train_sac_agent(
             
             action = [agent.select_action(flat_observation).tolist()]
             
-            print(action)
-            
+            # print(action)
+            agent.total_steps += 1
                     
             next_observation, reward, info, done = env.step(action)
+            
+            print(f"reward: {reward}")
                         
             flat_next_observation = np.concatenate(next_observation) if isinstance(next_observation, list) else next_observation
             
@@ -41,12 +43,14 @@ def train_sac_agent(
             agent.replay_buffer.push(
                 flat_observation, 
                 action, 
-                np.sum(reward), 
+                np.sum(reward),
                 flat_next_observation, 
                 len(done)
             )
             
-            agent.train()
+            if agent.total_steps >= agent.exploration_timesteps:
+                agent.train()
+            
             
             observation = next_observation
         
@@ -84,11 +88,11 @@ if __name__ == "__main__":
     )
     random_agent = RandomAgent(env.observation_space, env.action_space)
 
-    centralized_interact_with_env(env, random_agent)
+    # centralized_interact_with_env(env, random_agent)
     
     
     observation_space_dim = 52
-    action_space_dim = 9
+    action_space_dim = 9 # set to 18 and turn on other actions
     
     
     # Initialize SAC Agent
@@ -100,9 +104,11 @@ if __name__ == "__main__":
         batch_size=256,
         learning_rate=3e-4,
         gamma=0.99,
-        tau=0.005,
-        alpha=0.2
+        tau=0.01,
+        alpha=0.05,
+        action_space=env.action_space,
+        exploration_timesteps = 256
     )
     
     # Train the agent
-    # train_sac_agent(env, sac_agent, episodes=100)
+    train_sac_agent(env, sac_agent, episodes=100)
