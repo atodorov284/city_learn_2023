@@ -37,7 +37,6 @@ def train_sac_agent(
                         
             flat_next_observation = np.concatenate(next_observation) if isinstance(next_observation, list) else next_observation
             
-            
             episode_reward += np.sum(reward)
                         
             agent.replay_buffer.push(

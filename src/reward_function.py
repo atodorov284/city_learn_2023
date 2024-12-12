@@ -200,7 +200,7 @@ class ComfortReward(RewardFunction):
 
 
 class CustomRewardFunction(ComfortReward):
-    r"""Custom reward function class.
+    """Custom reward function class.
     Combines :py:class:`citylearn.reward_function.ComfortReward (comfort of the occupants)` 
     and :py:class:`citylearn.reward_function.RewardFunction (electricity consumption)`
 
@@ -212,9 +212,18 @@ class CustomRewardFunction(ComfortReward):
         Other keyword arguments for custom reward calculation.
     """
     
-    def __init__(self, env_metadata: Mapping[str, Any], **kwargs):
+    def __init__(self, env_metadata: Mapping[str, Any], **kwargs) -> None:
+        """ Initialize the custom reward function. """
         super().__init__(env_metadata, **kwargs)
     
     def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
-        # fix lol
-        return super().calculate(observations) + RewardFunction.calculate(self, observations)
+        """ 
+        Calculates the custom reward using a simple sum.
+        TODO: APPLY WEIGHTING (comfort reward can be even ~50x electricity reward in magnitude),
+        which is why I reduced it by 20 for now.
+        """
+        rewards_comfort = ComfortReward.calculate(self, observations) 
+        rewards_electricity = RewardFunction.calculate(self, observations)
+        rewards_comfort = list(map(lambda x: x/20, rewards_comfort))
+        reward_sum = list(map(np.add, rewards_comfort, rewards_electricity))
+        return reward_sum

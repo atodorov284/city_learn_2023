@@ -83,10 +83,8 @@ class SACAgent(Agent):
         if self.total_steps < self.exploration_timesteps:
             # return action_space_dim number of values between -1 and 1
             print("selecting random action")
-            return np.array([0,0,0,0,0,0,0,0,0])
             actions_nr = self.action_space_dim
-            actions = (torch.rand((1, actions_nr)) * 0.1 - 0.05).cpu().numpy()[0]
-            #actions = (torch.rand((1, actions_nr)) * 2 - 1).cpu().numpy()[0]
+            actions = (torch.rand((1, actions_nr)) * 0.00001 - 0.000005).cpu().numpy()[0]
             print(actions)
             return actions
 
