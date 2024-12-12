@@ -82,10 +82,8 @@ class SACAgent(Agent):
         # Take a random action for a first few steps
         if self.total_steps < self.exploration_timesteps:
             # return action_space_dim number of values between -1 and 1
-            print("selecting random action")
             actions_nr = self.action_space_dim
             actions = (torch.rand((1, actions_nr)) * 0.00001 - 0.000005).cpu().numpy()[0]
-            print(actions)
             return actions
 
         # Sample action from policy
@@ -150,14 +148,12 @@ class SACAgent(Agent):
         min_q_pi = torch.min(q1_pi, q2_pi)
         
         # Actor loss with entropy
-        print(min_q_pi.mean())
         actor_loss = (self.alpha * log_probs - min_q_pi).mean()
         
         # Optimize actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
-        print(f"{self.total_steps}: Actor Loss: {actor_loss}, Critic Loss: {critic_loss}")
         
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)
@@ -249,7 +245,6 @@ class Actor(nn.Module):
             (action_space.high - action_space.low) / 2.)
         self.action_bias = torch.FloatTensor(
             (action_space.high + action_space.low) / 2.)
-        print(f"Action Scale {self.action_scale}, Action Bias {self.action_bias}")
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
         """
