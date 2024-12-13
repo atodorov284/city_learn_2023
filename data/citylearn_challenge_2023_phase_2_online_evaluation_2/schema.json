@@ -1,6 +1,6 @@
 {
   "root_directory": null,
-  "central_agent": true,
+  "central_agent": false,
   "simulation_start_time_step": 0,
   "simulation_end_time_step": 2207,
   "episode_time_steps": null,
@@ -199,10 +199,10 @@
   },
   "actions": {
     "cooling_storage": {
-      "active": false
+      "active": true
     },
     "heating_storage": {
-      "active": false
+      "active": true
     },
     "dhw_storage": {
       "active": true
@@ -214,7 +214,7 @@
       "active": true
     },
     "heating_device": {
-      "active": false
+      "active": true
     }
   },
   "agent": {
@@ -238,12 +238,7 @@
     }
   },
   "reward_function": {
-    "type": "citylearn.reward_function.ComfortReward",
-    "attributes": {
-      "band": 1.0,
-      "lower_exponent": 2.0,
-      "higher_exponent": 3.0
-    }
+    "type": "reward_function.CustomRewardFunction"
   },
   "buildings": {
     "Building_1": {

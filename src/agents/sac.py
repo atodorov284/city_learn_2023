@@ -78,13 +78,6 @@ class SACAgent(Agent):
         """
         # Convert state to tensor
         state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        
-        # Take a random action for a first few steps
-        if self.total_steps < self.exploration_timesteps:
-            # return action_space_dim number of values between -1 and 1
-            actions_nr = self.action_space_dim
-            actions = (torch.rand((1, actions_nr)) * 0.00001 - 0.000005).cpu().numpy()[0]
-            return actions
 
         # Sample action from policy
         with torch.no_grad():
