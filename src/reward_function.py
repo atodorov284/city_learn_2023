@@ -35,7 +35,10 @@ class CustomRewardFunction(ComfortReward):
         return reward_sum
     
     def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
-
+        """
+        TODO: Use the random agent for multiple episodes to determine what min/max of the
+        rewards should be and store it for later
+        """
         rewards_comfort = ComfortReward.calculate(self, observations)
         rewards_electricity = RewardFunction.calculate(self, observations)
     
