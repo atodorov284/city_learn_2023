@@ -19,6 +19,7 @@ def train_sac_agent(
 ) -> None:
     """Train SAC agent in the environment"""
     episode_rewards = []  # List to store episode rewards
+    reward_list = []
     
     for episode in range(episodes):
         # Reset environment and get initial observation
@@ -33,6 +34,7 @@ def train_sac_agent(
             agent.total_steps += 1
                     
             next_observation, reward, info, done = env.step(action)
+            reward_list.append(reward)
             
             flat_next_observation = np.concatenate(next_observation) if isinstance(next_observation, list) else next_observation
             
@@ -54,7 +56,7 @@ def train_sac_agent(
         episode_rewards.append(episode_reward)  # Store the episode's total reward
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
     
-    return episode_rewards
+    return reward_list, episode_rewards
 
 def centralized_interact_with_env(
     env: CityLearnEnv, agent: Agent = RandomAgent, episodes: int = 100
@@ -106,23 +108,39 @@ if __name__ == "__main__":
     )
         
     # Train the agent
-    episode_rewards = train_sac_agent(env, sac_agent, episodes=10)
+    rewards, episode_rewards = train_sac_agent(env, sac_agent, episodes=3)
 
-    # Plot the episode rewards
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(1, len(episode_rewards) + 1), episode_rewards, 
-             label='Episode Rewards', color='green', marker='o')
-    
+    # Convert rewards list to numpy array for easier manipulation
+    rewards_array = np.array(rewards)  # rewards is your list of reward lists
+    steps = range(1, len(rewards_array) + 1)
+
+    # Calculate the sum of rewards at each step across all agents
+    summed_rewards = np.sum(rewards_array, axis=1)
+
+    # Create the plot
+    plt.figure(figsize=(12, 6))
+
+    # Plot raw rewards
+    plt.plot(steps, summed_rewards, alpha=0.3, color='blue', label='Raw Rewards')
+
     # Add rolling average
-    window_size = 5
-    if len(episode_rewards) >= window_size:
-        rolling_mean = pd.Series(episode_rewards).rolling(window=window_size).mean()
+    window_size = 100  # Adjust this value based on your needs
+    rolling_mean = pd.Series(summed_rewards).rolling(window=window_size, min_periods=1).mean()
+    plt.plot(steps, rolling_mean, color='red', linewidth=2, label=f'{window_size}-step Moving Average')
 
-    plt.title("Centralized SAC Episode Rewards", fontsize=16, fontweight='bold')
-    plt.xlabel("Episode", fontsize=14)
-    plt.ylabel("Total Episode Reward", fontsize=14)
-    plt.grid(True, linestyle='--', linewidth=0.5)
+    # Customize the plot
+    plt.title("Centralized SAC Agent Rewards Over Time", fontsize=16, fontweight='bold')
+    plt.xlabel("Environment Steps", fontsize=14)
+    plt.ylabel("Reward", fontsize=14)
+    plt.grid(True, linestyle='--', alpha=0.7)
     plt.legend(fontsize=12)
 
-    plt.savefig("episode_rewards.png", dpi=300, bbox_inches='tight')
+    # Optional: Add horizontal line at y=0 for reference
+    plt.axhline(y=0, color='k', linestyle='--', alpha=0.3)
+
+    # Optional: Use scientific notation for large numbers on x-axis
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+
+    plt.tight_layout()
+    plt.savefig("step_rewards_centralized.png", dpi=300, bbox_inches='tight')
     plt.show()

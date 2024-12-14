@@ -33,3 +33,19 @@ class CustomRewardFunction(ComfortReward):
         rewards_comfort = list(map(lambda x: x/20, rewards_comfort))
         reward_sum = list(map(np.add, rewards_comfort, rewards_electricity))
         return reward_sum
+    
+    def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
+
+        rewards_comfort = ComfortReward.calculate(self, observations)
+        rewards_electricity = RewardFunction.calculate(self, observations)
+    
+        # Normalize rewards
+        min_comfort, max_comfort = 0, 10
+        normalized_comfort = [(x - min_comfort) / (max_comfort - min_comfort) for x in rewards_comfort]
+        min_electricity, max_electricity = min(rewards_electricity), max(rewards_electricity)
+        normalized_electricity = [(x - min_electricity) / (max_electricity - min_electricity) for x in rewards_electricity]
+    
+        # Combine the normalized rewards
+        reward_sum = [c + e for c, e in zip(normalized_comfort, normalized_electricity)]
+    
+        return reward_sum
