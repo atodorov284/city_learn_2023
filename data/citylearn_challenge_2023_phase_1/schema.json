@@ -21,7 +21,7 @@
       "shared_in_central_agent": true
     },
     "daylight_savings_status": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": true
     },
     "outdoor_dry_bulb_temperature": {
@@ -113,11 +113,11 @@
       "shared_in_central_agent": false
     },
     "cooling_storage_soc": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "heating_storage_soc": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "dhw_storage_soc": {
@@ -149,11 +149,11 @@
       "shared_in_central_agent": true
     },
     "cooling_device_cop": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "heating_device_cop": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "cooling_demand": {
@@ -161,7 +161,7 @@
       "shared_in_central_agent": false
     },
     "heating_demand": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "dhw_demand": {
@@ -169,15 +169,15 @@
       "shared_in_central_agent": false
     },
     "cooling_electricity_consumption": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "heating_electricity_consumption": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "dhw_electricity_consumption": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     },
     "occupant_count": {
@@ -193,7 +193,7 @@
       "shared_in_central_agent": false
     },
     "power_outage": {
-      "active": false,
+      "active": true,
       "shared_in_central_agent": false
     }
   },
