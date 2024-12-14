@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from torch import nn
+from typing import List
 
 from agents.base_agent import Agent
 from utils.replay_buffer import ReplayBuffer
@@ -21,7 +22,7 @@ class SACEncoder(nn.Module):
         self.fc3 = nn.Linear(hidden_dim, output_dim)
 
         self._initialize_weights()
-        
+
         self.to(self.device)
 
     def _initialize_weights(self):
@@ -33,7 +34,7 @@ class SACEncoder(nn.Module):
         nn.init.xavier_uniform_(self.fc3.weight)
 
 
-    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+    def forward(self, observation: List) -> np.ndarray:
         """
         Compute a compressed representation of a state
 
@@ -41,10 +42,14 @@ class SACEncoder(nn.Module):
             state (torch.Tensor): Input state
 
         Returns:
-            Compressed state representation
+            Compressed state representation as a list
         """
+        # change obs to tensor 
+        observation = np.array(observation)
+        observation = torch.from_numpy(observation).float().to(self.device)
+
         q1 = F.relu(self.fc1(observation))
-        q1 = F.relu(self.fc2(q1))
+        #q1 = F.relu(self.fc2(q1))
         q1 = self.fc3(q1)
 
-        return q1
+        return list(q1.detach().cpu().numpy())
