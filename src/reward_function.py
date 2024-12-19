@@ -21,12 +21,20 @@ class CustomRewardFunction(ComfortReward):
     def __init__(self, env_metadata: Mapping[str, Any], **kwargs) -> None:
         """ Initialize the custom reward function. """
         super().__init__(env_metadata, **kwargs)
+        self.counter_good = 0
+        self.counter_bad = 0
     
-    def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
+    def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
         """ 
-        Calculates the custom reward using a simple sum.
-        TODO: APPLY WEIGHTING (comfort reward can be even ~50x electricity reward in magnitude),
-        which is why I reduced it by 20 for now.
+        Calculates the custom reward using a weighted average.
+        ! WARNING !
+        This function should NOT be used by the user unless they stricly want to 
+        apply a weighted average of the two rewards.
+        Args:
+            observations (List[Mapping[str, Union[int, float]]]): List of 
+                observations from the environment.
+        Returns:
+            List[float]: A list of rewards.
         """
         rewards_comfort = ComfortReward.calculate(self, observations) 
         rewards_electricity = RewardFunction.calculate(self, observations)
@@ -34,21 +42,36 @@ class CustomRewardFunction(ComfortReward):
         reward_sum = list(map(np.add, rewards_comfort, rewards_electricity))
         return reward_sum
     
-    def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
+    def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
         """
-        TODO: Use the random agent for multiple episodes to determine what min/max of the
-        rewards should be and store it for later
+        Calculates the custom reward using a simple sum of two normalized rewards:
+        the preimplemented environment comfort and the custom reward functions.
+        Normalization values determined by simulation on random agents for 10 episodes.
+        Args:
+            observations (List[Mapping[str, Union[int, float]]]): List of observations
+                from the environment.
+        Returns:
+            List[float]: A list of rewards.
         """
         rewards_comfort = ComfortReward.calculate(self, observations)
         rewards_electricity = RewardFunction.calculate(self, observations)
     
         # Normalize rewards
-        min_comfort, max_comfort = 0, 10
+        min_comfort, max_comfort = -4500, 0
         normalized_comfort = [(x - min_comfort) / (max_comfort - min_comfort) for x in rewards_comfort]
-        min_electricity, max_electricity = min(rewards_electricity), max(rewards_electricity)
+        min_electricity, max_electricity = -29, 0
         normalized_electricity = [(x - min_electricity) / (max_electricity - min_electricity) for x in rewards_electricity]
     
         # Combine the normalized rewards
+        if np.mean(normalized_comfort) > 1.5 * np.mean(normalized_electricity) or 1.5 * np.mean(normalized_comfort) < np.mean(normalized_electricity):
+            # print("COMFORT", np.mean(normalized_comfort), "ELECTRICITY", np.mean(normalized_electricity))
+            self.counter_bad += 1
+        else:
+            self.counter_good += 1
+
+        # if self.counter_good % 100 == 0:
+            # print(self.counter_bad/self.counter_good) # testing purposes, absolutely unnecessary
+
         reward_sum = [c + e for c, e in zip(normalized_comfort, normalized_electricity)]
     
         return reward_sum
