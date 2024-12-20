@@ -24,12 +24,9 @@ class CustomRewardFunction(ComfortReward):
         self.counter_good = 0
         self.counter_bad = 0
     
-    def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
-        """ 
+    def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
+        """
         Calculates the custom reward using a weighted average.
-        ! WARNING !
-        This function should NOT be used by the user unless they stricly want to 
-        apply a weighted average of the two rewards.
         Args:
             observations (List[Mapping[str, Union[int, float]]]): List of 
                 observations from the environment.
@@ -38,15 +35,20 @@ class CustomRewardFunction(ComfortReward):
         """
         rewards_comfort = ComfortReward.calculate(self, observations) 
         rewards_electricity = RewardFunction.calculate(self, observations)
-        rewards_comfort = list(map(lambda x: x/20, rewards_comfort))
+        rewards_comfort = list(map(lambda x: x/100, rewards_comfort))
         reward_sum = list(map(np.add, rewards_comfort, rewards_electricity))
+        # print("COMFORT", np.mean(rewards_comfort), "ELECTRICITY", np.mean(rewards_electricity))
         return reward_sum
     
-    def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
+    def calculate2(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
         """
         Calculates the custom reward using a simple sum of two normalized rewards:
         the preimplemented environment comfort and the custom reward functions.
         Normalization values determined by simulation on random agents for 10 episodes.
+
+        ! WARNING !
+        This function should NOT be used by the user as it does not work lol.
+
         Args:
             observations (List[Mapping[str, Union[int, float]]]): List of observations
                 from the environment.
@@ -61,10 +63,11 @@ class CustomRewardFunction(ComfortReward):
         normalized_comfort = [(x - min_comfort) / (max_comfort - min_comfort) for x in rewards_comfort]
         min_electricity, max_electricity = -29, 0
         normalized_electricity = [(x - min_electricity) / (max_electricity - min_electricity) for x in rewards_electricity]
-    
+        if np.mean(normalized_electricity) < 0.1:
+            print("COMFORT", np.mean(normalized_comfort), "ELECTRICITY", np.mean(normalized_electricity))
         # Combine the normalized rewards
         if np.mean(normalized_comfort) > 1.5 * np.mean(normalized_electricity) or 1.5 * np.mean(normalized_comfort) < np.mean(normalized_electricity):
-            # print("COMFORT", np.mean(normalized_comfort), "ELECTRICITY", np.mean(normalized_electricity))
+            #print("COMFORT", np.mean(normalized_comfort), "ELECTRICITY", np.mean(normalized_electricity))
             self.counter_bad += 1
         else:
             self.counter_good += 1

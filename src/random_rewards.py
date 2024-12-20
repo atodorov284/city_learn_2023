@@ -13,10 +13,9 @@ rewards = []
 for i in range (100):
     observations = env.reset()
 
-
     while not env.done:
         actions = random_model.predict(observations)
         observations, reward, info, done = env.step(actions)
         rewards.append(reward)
 
-    print(min(rewards), max(rewards))
+    print(min(rewards), max(rewards), np.mean(rewards))

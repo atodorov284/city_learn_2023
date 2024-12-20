@@ -9,16 +9,24 @@ from matplotlib import pyplot as plt
 from typing import List
 
 from agents.sac import SACAgent
-from agents.sac_encoder import SACEncoder
+from agents.autoencoder import SACEncoder
 
 def train_sac_agent(
     env: CityLearnEnv, 
     agents: list[SACAgent], 
     episodes: int = 100, 
-    central_agent = False
+    central_agent: bool = False,
+    use_random_encoder: bool = True
 ) -> None:
     """Train SAC agent in the environment"""
-    encoder = SACEncoder(observation_space_dim=77, output_dim=20, hidden_dim=40)
+    encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
+
+    if not use_random_encoder:
+        # Load the state_dict and set the model to evaluation mode
+        loaded_state_dict = torch.load("current_sac_encoder.pth")
+        encoder.load_state_dict(loaded_state_dict)
+        # encoder.eval()
+
     reward_list = []
     day_rewards = []
     episode_rewards = []  # List to store episode rewards
@@ -31,7 +39,7 @@ def train_sac_agent(
         curr_day_reward = 0
 
         with torch.no_grad():
-            observation = encoder(observation)
+            observation = encoder.encode(observation)
             
         while not env.done:
             if central_agent:
@@ -56,7 +64,7 @@ def train_sac_agent(
             next_observation, reward, info, done = env.step(actions)
 
             with torch.no_grad():
-                next_observation = encoder(next_observation)
+                next_observation = encoder.encode(next_observation)
             
             reward_list.append(np.sum(reward))
             curr_day_reward += np.sum(reward)
@@ -100,7 +108,7 @@ def train_sac_agent(
         episode_rewards.append(episode_reward)
         
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
-    
+    print(day_rewards)
     return reward_list, episode_rewards, day_rewards
 
 
@@ -157,7 +165,7 @@ def create_agents(env: CityLearnEnv, central_agent: bool = False,
         Agent or a list of agents
     """
     if central_agent:
-        observation_space_dim = 20 #77
+        observation_space_dim = 30 #77
         action_space_dim = 18
         building_number = 1
     else:
@@ -245,7 +253,7 @@ if __name__ == "__main__":
     #decentralized_agent = create_agents(decentralized_env, central_agent=False)
     
     # Train the agent
-    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=15, central_agent=True)
+    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=8, central_agent=True)
     #rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
     
     # Plot the rewards

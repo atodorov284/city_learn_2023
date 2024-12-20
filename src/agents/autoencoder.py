@@ -70,6 +70,7 @@ class SACEncoder(nn.Module):
     def encode(self, observation: List) -> np.ndarray:  
         """
         Use the encode-only part after training.
+        OR use this as a random encoder.
         """ 
         # change obs to tensor 
         observation = np.array(observation)
