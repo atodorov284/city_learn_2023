@@ -27,6 +27,9 @@ class CustomRewardFunction(ComfortReward):
     def calculate(self, observations: List[Mapping[str, Union[int, float]]]) -> List[float]:
         """
         Calculates the custom reward using a weighted average.
+        Coefficients found by observing the reward distributions,
+        scaling them to around -100;0. For more information on the
+        coefficients, see Methods section of the paper.
         Args:
             observations (List[Mapping[str, Union[int, float]]]): List of 
                 observations from the environment.
@@ -35,7 +38,8 @@ class CustomRewardFunction(ComfortReward):
         """
         rewards_comfort = ComfortReward.calculate(self, observations) 
         rewards_electricity = RewardFunction.calculate(self, observations)
-        rewards_comfort = list(map(lambda x: x/100, rewards_comfort))
+        rewards_comfort = list(map(lambda x: x/48, rewards_comfort))
+        rewards_electricity = list(map(lambda x: x*2.7, rewards_electricity)) 
         reward_sum = list(map(np.add, rewards_comfort, rewards_electricity))
         # print("COMFORT", np.mean(rewards_comfort), "ELECTRICITY", np.mean(rewards_electricity))
         return reward_sum
