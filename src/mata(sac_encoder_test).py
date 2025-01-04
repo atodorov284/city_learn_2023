@@ -21,12 +21,6 @@ def train_sac_agent(
     """Train SAC agent in the environment"""
     encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
 
-    if not use_random_encoder:
-        # Load the state_dict and set the model to evaluation mode
-        loaded_state_dict = torch.load("current_sac_encoder.pth")
-        encoder.load_state_dict(loaded_state_dict)
-        # encoder.eval()
-
     reward_list = []
     day_rewards = []
     episode_rewards = []  # List to store episode rewards
@@ -39,7 +33,8 @@ def train_sac_agent(
         curr_day_reward = 0
 
         with torch.no_grad():
-            observation = encoder.encode(observation)
+            # observation = encoder.encode(observation)
+            pass
             
         while not env.done:
             if central_agent:
@@ -64,13 +59,14 @@ def train_sac_agent(
             next_observation, reward, info, done = env.step(actions)
 
             with torch.no_grad():
-                next_observation = encoder.encode(next_observation)
+                # next_observation = encoder.encode(next_observation)
+                pass
             
             reward_list.append(np.sum(reward))
             curr_day_reward += np.sum(reward)
             
-            if agent.total_steps % 24 == 0:
-                day_rewards.append(curr_day_reward)
+            if agent.total_steps % 24 == 0: # 168 for weekly
+                day_rewards.append(np.mean(curr_day_reward))
                 curr_day_reward = 0
             
 
@@ -108,6 +104,10 @@ def train_sac_agent(
         episode_rewards.append(episode_reward)
         
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
+        
+        plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
+        
+        
     #print(day_rewards)
     return reward_list, episode_rewards, day_rewards
 
@@ -147,7 +147,7 @@ def create_agents(env: CityLearnEnv, central_agent: bool = False,
                   learning_rate: float = 3e-4, gamma: float = 0.99,
                   tau: float = 0.01, alpha: float = 0.05,
                   batch_size: int = 256,
-                  exploration_timesteps: int = 0) -> SACAgent | List:
+                  exploration_timesteps: int = 0) -> List[SACAgent]:
     """
     Creates the agents with the given specification.
     Args:
@@ -165,7 +165,7 @@ def create_agents(env: CityLearnEnv, central_agent: bool = False,
         Agent or a list of agents
     """
     if central_agent:
-        observation_space_dim = 30 #77 TEST WITH SOME LARGER NUMBERS
+        observation_space_dim = 77 #77 TEST WITH SOME LARGER NUMBERS
         action_space_dim = 18
         building_number = 1
     else:
@@ -214,7 +214,7 @@ def plot_rewards(rewards: list[float], agent_type: str = "centralized", plot_fol
     plt.plot(steps, rewards, alpha=0.3, color='blue', label='Raw Rewards')
     
     # Add rolling average
-    window_size = 100
+    window_size = 15
     rolling_mean = pd.Series(rewards).rolling(window=window_size, min_periods=1).mean()
     plt.plot(steps, rolling_mean, color='red', linewidth=2, label=f'{window_size}-step Moving Average')
     
@@ -257,5 +257,5 @@ if __name__ == "__main__":
     #rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
     
     # Plot the rewards
-    plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
+    # plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
     #plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")

@@ -238,7 +238,7 @@
     }
   },
   "reward_function": {
-    "type": "reward_function.CustomRewardFunction",
+    "type": "citylearn.reward_function.ComfortReward",
     "attributes": {
       "band": 1.0,
       "lower_exponent": 2.0,
