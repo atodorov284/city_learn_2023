@@ -60,7 +60,8 @@ class CustomRewardFunction(ComfortReward):
     def _electricity_score(
         self, observations: List[Mapping[str, Union[int, float]]]
     ) -> List[float]:
-        return ComfortReward.calculate(self, observations)
+        electricity_score = ComfortReward.calculate(self, observations)
+        return electricity_score
 
     def _comfort_score(
         self, observations: List[Mapping[str, Union[int, float]]]
@@ -76,7 +77,7 @@ class CustomRewardFunction(ComfortReward):
             temp_difference = np.abs(indoor_temperature - set_point)
 
             if temp_difference > tolerance:
-                reward = - (temp_difference - tolerance) ** 1
+                reward = - (temp_difference - tolerance) ** 2
 
             else:
                 reward = 0
