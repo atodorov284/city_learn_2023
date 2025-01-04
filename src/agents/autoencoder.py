@@ -8,6 +8,7 @@ from typing import List
 from agents.base_agent import Agent
 from utils.replay_buffer import ReplayBuffer
 
+
 class SACEncoder(nn.Module):
     def __init__(
         self, observation_space_dim: int, output_dim: int, hidden_dim: int
@@ -17,12 +18,12 @@ class SACEncoder(nn.Module):
 
         super(SACEncoder, self).__init__()
 
-        #encoder
+        # encoder
         self.fc1 = nn.Linear(observation_space_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = nn.Linear(hidden_dim, output_dim)
 
-        #decoder
+        # decoder
         self.dc1 = nn.Linear(output_dim, hidden_dim)
         self.dc2 = nn.Linear(hidden_dim, hidden_dim)
         self.dc3 = nn.Linear(hidden_dim, observation_space_dim)
@@ -43,36 +44,34 @@ class SACEncoder(nn.Module):
         nn.init.xavier_uniform_(self.dc2.weight)
         nn.init.xavier_uniform_(self.dc3.weight)
 
-
-
     def forward(self, observation: List) -> np.ndarray:
         """
         Forward pass of the autoencoder.
         """
-        # change obs to tensor 
+        # change obs to tensor
         observation = np.array(observation)
         observation = torch.from_numpy(observation).float().to(self.device)
 
-        #encode
+        # encode
         q1 = F.relu(self.fc1(observation))
         q1 = F.relu(self.fc2(q1))
         q1 = self.fc3(q1)
 
         enc_repr = q1
 
-        #decode
+        # decode
         q1 = F.relu(self.dc1(enc_repr))
         q1 = F.relu(self.dc2(q1))
         q1 = self.dc3(q1)
 
-        return q1  
+        return q1
 
-    def encode(self, observation: List) -> np.ndarray:  
+    def encode(self, observation: List) -> np.ndarray:
         """
         Use the encode-only part after training.
         OR use this as a random encoder.
-        """ 
-        # change obs to tensor 
+        """
+        # change obs to tensor
         observation = np.array(observation)
         observation = torch.from_numpy(observation).float().to(self.device)
 

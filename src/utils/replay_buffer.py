@@ -3,7 +3,9 @@ from typing import Dict
 
 import numpy as np
 
-Transition = namedtuple("Transition", ("state", "action", "reward", "next_state", "done"))
+Transition = namedtuple(
+    "Transition", ("state", "action", "reward", "next_state", "done")
+)
 
 
 class ReplayBuffer:
@@ -12,7 +14,9 @@ class ReplayBuffer:
         self._capacity = capacity
         self._memory = []
 
-    def push(self, state: list, action: list, reward: float, next_state: list, done: int) -> None:
+    def push(
+        self, state: list, action: list, reward: float, next_state: list, done: int
+    ) -> None:
         """Push a transition to the replay buffer"""
 
         if len(self) >= self._capacity:

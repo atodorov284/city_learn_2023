@@ -8,16 +8,19 @@ schema_path = root_directory / "schema.json"
 
 CENTRAL = True
 
-env = CityLearnEnv(schema=schema_path, root_directory=root_directory, central_agent=CENTRAL)
+env = CityLearnEnv(
+    schema=schema_path, root_directory=root_directory, central_agent=CENTRAL
+)
 
 import numpy as np
+
 random_model = RandomAgent(env)
 
 # MAKE FOR BOTH CENTRALIZED AND DECENTRALIZED TO COMPARE
 
 low_reward_dict = {}
 # round all rewards to 3 decimals to make them more readable
-for i in range (20):
+for i in range(20):
     observations = env.reset()
     rewards = []
     while not env.done:
@@ -25,7 +28,7 @@ for i in range (20):
         observations, reward, info, done = env.step(actions)
         rewards.append(round(np.sum(reward), 3))
     print(f"episode {i} Total reward: {np.sum(rewards)}")
-    #print(min(rewards), max(rewards), np.mean(rewards))
+    # print(min(rewards), max(rewards), np.mean(rewards))
 
 q25 = np.quantile(rewards, 0.25)  # 25th percentile (1st quartile)
 q50 = np.quantile(rewards, 0.50)  # 50th percentile (median)
@@ -36,11 +39,11 @@ print(f"50th percentile: {q50}")
 print(f"75th percentile: {q75}")
 
 
-#plot and save rewards as a histogram with a title "Random Agent REWARD-TYPE Rewards"
+# plot and save rewards as a histogram with a title "Random Agent REWARD-TYPE Rewards"
 plt.hist(rewards, bins=100)
 plt.title("Random Agent Combined Scaled Rewards")
 plt.xlabel("Reward")
-plt.xlim(-100, 0) # ADD ONLY TO SCALED VERSIONS OF REWARD !!!!!!!!!!!!!!!!!!!!
+plt.xlim(-100, 0)  # ADD ONLY TO SCALED VERSIONS OF REWARD !!!!!!!!!!!!!!!!!!!!
 plt.ylabel("Frequency")
 if CENTRAL:
     plt.savefig("random_rewards_central.png")
