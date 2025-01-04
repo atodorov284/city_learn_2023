@@ -2,6 +2,7 @@ from citylearn.agents.base import Agent as RandomAgent
 from citylearn.citylearn import CityLearnEnv
 import matplotlib.pyplot as plt
 from pathlib import Path
+import numpy as np
 
 root_directory = Path("data/citylearn_challenge_2023_phase_1")
 schema_path = root_directory / "schema.json"
@@ -12,7 +13,6 @@ env = CityLearnEnv(
     schema=schema_path, root_directory=root_directory, central_agent=CENTRAL
 )
 
-import numpy as np
 
 random_model = RandomAgent(env)
 

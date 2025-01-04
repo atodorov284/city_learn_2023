@@ -8,19 +8,13 @@ dependencies = [
     "citylearn==2.1b9",
     "ipykernel>=6.29.5",
     "numpy==1.26.4",
-    "optuna>=4.1.0",
-    "pandas>=1.3.5",
-    "pyqt6>=6.8.0",
-    "scikit-learn>=1.0.2",
-    "shimmy>=2.0.0",
-    "stable-baselines3>=2.4.0",
     "torch>=2.5.1",
     "wandb>=0.18.7",
 ]
 
 [tool.ruff]
-exclude = ["notebooks"]
+exclude = ["notebooks", "old"]
 
 [tool.ruff.lint]
 select = ["E", "F", "ANN", "D", "F", "I"]
-ignore = ["ANN101","ANN102","D100", "D101","D2","D4","ANN002","ANN003", "E501", "ANN401", "D104"]
+ignore = ["ANN101","ANN102","D100", "D101","D2","D4","ANN002","ANN003", "E501", "ANN401", "D104", "I001"]

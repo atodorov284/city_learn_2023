@@ -1,11 +1,8 @@
-from typing import Any, List, Mapping, Tuple, Union
+from typing import Any, List, Mapping, Union
 import numpy as np
-from citylearn.data import ZERO_DIVISION_PLACEHOLDER
 from citylearn.reward_function import (
     RewardFunction,
     ComfortReward,
-    IndependentSACReward,
-    MARL,
 )
 
 
@@ -53,10 +50,10 @@ class CustomRewardFunction(ComfortReward):
 
         rewards_comfort = self._comfort_score(observations)
         rewards_electricity = self._electricity_score(observations)
-        
+
         rewards = rewards_comfort + rewards_electricity
         return rewards
-    
+
     def _electricity_score(
         self, observations: List[Mapping[str, Union[int, float]]]
     ) -> List[float]:
@@ -77,7 +74,7 @@ class CustomRewardFunction(ComfortReward):
             temp_difference = np.abs(indoor_temperature - set_point)
 
             if temp_difference > tolerance:
-                reward = - (temp_difference - tolerance) ** 2
+                reward = -((temp_difference - tolerance) ** 2)
 
             else:
                 reward = 0

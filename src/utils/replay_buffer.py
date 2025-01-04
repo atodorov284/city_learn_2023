@@ -44,11 +44,3 @@ class ReplayBuffer:
     def __len__(self) -> int:
         """Return the length of the replay buffer"""
         return len(self._memory)
-
-
-if __name__ == "__main__":
-    buffer = ReplayBuffer(10)
-    buffer.push([1, 2], [3, 4], 5, [6, 7])
-    buffer.push([2, 2], [3, 4], 0, [6, 7])
-    buffer.push([3, 2], [3, 5], 1, [6, 7])
-    print(buffer.sample(3))
