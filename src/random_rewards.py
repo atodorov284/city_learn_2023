@@ -15,16 +15,16 @@ random_model = RandomAgent(env)
 
 # MAKE FOR BOTH CENTRALIZED AND DECENTRALIZED TO COMPARE
 
-rewards = []
 low_reward_dict = {}
 # round all rewards to 3 decimals to make them more readable
 for i in range (20):
     observations = env.reset()
+    rewards = []
     while not env.done:
         actions = random_model.predict(observations)
         observations, reward, info, done = env.step(actions)
         rewards.append(round(np.sum(reward), 3))
-    print(i)
+    print(f"episode {i} Total reward: {np.sum(rewards)}")
     #print(min(rewards), max(rewards), np.mean(rewards))
 
 q25 = np.quantile(rewards, 0.25)  # 25th percentile (1st quartile)

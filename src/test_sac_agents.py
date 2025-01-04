@@ -231,17 +231,17 @@ def plot_rewards(rewards: list[float], agent_type: str = "centralized", plot_fol
 if __name__ == "__main__":
     
     # Create the environments
-    #centralized_env = create_environment(central_agent=True, SEED=0,  path="data/citylearn_challenge_2023_phase_1")
-    decentralized_env = create_environment(central_agent=False, SEED=0,  path="data/citylearn_challenge_2023_phase_1")
+    centralized_env = create_environment(central_agent=True, SEED=0,  path="data/citylearn_challenge_2023_phase_1")
+    #decentralized_env = create_environment(central_agent=False, SEED=0,  path="data/citylearn_challenge_2023_phase_1")
     
     # Create the agents
-    #centralized_agent = create_agents(centralized_env, central_agent=True)
-    decentralized_agent = create_agents(decentralized_env, central_agent=False)
+    centralized_agent = create_agents(centralized_env, central_agent=True)
+    #decentralized_agent = create_agents(decentralized_env, central_agent=False)
     
     # Train the agent
-    #rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=15, central_agent=True)
-    rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
+    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=100, central_agent=True)
+    #rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
     
     # Plot the rewards
-    #plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
-    plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")
+    plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
+    #plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")

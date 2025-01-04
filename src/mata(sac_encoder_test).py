@@ -108,7 +108,7 @@ def train_sac_agent(
         episode_rewards.append(episode_reward)
         
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
-    print(day_rewards)
+    #print(day_rewards)
     return reward_list, episode_rewards, day_rewards
 
 
@@ -165,7 +165,7 @@ def create_agents(env: CityLearnEnv, central_agent: bool = False,
         Agent or a list of agents
     """
     if central_agent:
-        observation_space_dim = 30 #77
+        observation_space_dim = 30 #77 TEST WITH SOME LARGER NUMBERS
         action_space_dim = 18
         building_number = 1
     else:
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     #decentralized_agent = create_agents(decentralized_env, central_agent=False)
     
     # Train the agent
-    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=8, central_agent=True)
+    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = train_sac_agent(centralized_env, centralized_agent, episodes=100, central_agent=True)
     #rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
     
     # Plot the rewards
