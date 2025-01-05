@@ -136,7 +136,11 @@ def train_sac_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
 
-        # plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
+        if central_agent:
+            plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
+        else:
+            plot_rewards(day_rewards, agent_type="decentralized", plot_folder="plots/")
+       
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards
