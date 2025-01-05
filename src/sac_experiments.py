@@ -11,6 +11,21 @@ from typing import List
 from agents.sac import SACAgent
 from agents.autoencoder import SACEncoder
 
+# VARIABLE DEFINITIONS--------------------
+SEED = 0
+
+CENTRALIZED_OBSERVATION_DIMENSION = 77
+DECENTRALIZED_OBSERVATION_DIMENSION = 39
+
+CENTRALIZED_ACTION_DIMENSION = 18
+DECENTRALIZED_ACTION_DIMENSION = 6
+
+ENCODER_HIDDEN_DIMENSION = 65
+ENCODER_OUTPUT_DIMENSION = 50  # should be smaller than the observation dimension
+
+TRAINING_EPISODES = 100
+# ---------------------------------------
+
 
 def train_sac_agent(
     env: CityLearnEnv,
@@ -22,9 +37,16 @@ def train_sac_agent(
     """Train SAC agent in the environment"""
     encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
 
-    reward_list = []
-    day_rewards = []
+    if not use_random_encoder:
+        #check whether file exists
+        if not Path("encoder.pt").exists():
+            raise FileNotFoundError("encoder.pt not found - train the encoder before trying to load it")
+        encoder.load_state_dict(torch.load("encoder.pt"))
+
+    reward_list = []    # List to store rewards
+    day_rewards = []    # List to store daily rewards
     episode_rewards = []  # List to store episode rewards
+
 
     for episode in range(episodes):
         # Reset environment and get initial observation
@@ -38,6 +60,7 @@ def train_sac_agent(
             pass
 
         while not env.done:
+            # merge observations in a single array
             if central_agent:
                 flat_observation = (
                     np.concatenate(observation)
@@ -52,7 +75,6 @@ def train_sac_agent(
                 for i in range(len(agents)):
                     # agent_actions is used for the replay buffer
                     actions[i] = agents[i].select_action(observation[i]).tolist()
-                    # ADD THIS TO REPLAY BUFFER SAMPLING ASW
             else:
                 actions = [agents[0].select_action(flat_observation).tolist()]
 
@@ -60,8 +82,10 @@ def train_sac_agent(
             for agent in agents:
                 agent.total_steps += 1
 
+            # take a step
             next_observation, reward, info, done = env.step(actions)
 
+            # encode the next observation
             with torch.no_grad():
                 # next_observation = encoder.encode(next_observation)
                 pass
@@ -69,7 +93,7 @@ def train_sac_agent(
             reward_list.append(np.sum(reward))
             curr_day_reward += np.sum(reward)
 
-            if agent.total_steps % 24 == 0:  # 168 for weekly
+            if agent.total_steps % 24 == 0:  # 168 for weekly, 1 for hourly
                 day_rewards.append(np.mean(curr_day_reward))
                 curr_day_reward = 0
 
@@ -82,6 +106,7 @@ def train_sac_agent(
 
             episode_reward += np.sum(reward)
 
+            # store the transition in the replay buffer
             if not central_agent:
                 for i in range(len(agents)):
                     agents[i].replay_buffer.push(
@@ -111,7 +136,7 @@ def train_sac_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
 
-        plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
+        # plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards
@@ -181,12 +206,12 @@ def create_agents(
         Agent or a list of agents
     """
     if central_agent:
-        observation_space_dim = 77  # 77 TEST WITH SOME LARGER NUMBERS
-        action_space_dim = 18
+        observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION 
+        action_space_dim = CENTRALIZED_ACTION_DIMENSION
         building_number = 1
     else:
-        observation_space_dim = 39
-        action_space_dim = 6
+        observation_space_dim = DECENTRALIZED_OBSERVATION_DIMENSION
+        action_space_dim = DECENTRALIZED_ACTION_DIMENSION
         building_number = 3
 
     agents = []
@@ -273,9 +298,9 @@ def plot_rewards(
 if __name__ == "__main__":
     # Create the environments
     centralized_env = create_environment(
-        central_agent=True, SEED=0, path="data/citylearn_challenge_2023_phase_1"
+        central_agent=True, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
     )
-    # decentralized_env = create_environment(central_agent=False, SEED=0,  path="data/citylearn_challenge_2023_phase_1")
+    # decentralized_env = create_environment(central_agent=False, SEED=SEED,  path="data/citylearn_challenge_2023_phase_1")
 
     # Create the agents
     centralized_agent = create_agents(centralized_env, central_agent=True)
@@ -284,11 +309,11 @@ if __name__ == "__main__":
     # Train the agent
     rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
         train_sac_agent(
-            centralized_env, centralized_agent, episodes=100, central_agent=True
+            centralized_env, centralized_agent, episodes=TRAINING_EPISODES, central_agent=True
         )
     )
-    # rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=15, central_agent=False)
+    # rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=TRAINING_EPISODES, central_agent=False)
 
     # Plot the rewards
-    # plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
+    plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
     # plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")
