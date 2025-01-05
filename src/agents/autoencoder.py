@@ -24,6 +24,8 @@ class SACEncoder(nn.Module):
             self.fc3 = nn.Linear(hidden_dim, output_dim)
         else:
             self.fc1 = nn.Linear(observation_space_dim, output_dim)
+        
+        self.use_hidden_layers = use_hidden_layers
 
         #decoder
         self.dc1 = nn.Linear(output_dim, hidden_dim)
