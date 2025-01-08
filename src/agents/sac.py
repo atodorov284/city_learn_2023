@@ -86,37 +86,17 @@ class SACAgent(Agent):
 
         return action.detach().cpu().numpy()[0]
 
-    def select_action_with_log_probs(self, state: np.array, deterministic: bool = False) -> np.array:
-        """
-        Select an action from the policy but return with the log probabilities
 
-        Args:
-            state (np.array): Input state
-            deterministic (bool): Whether to use deterministic policy (after training)
-
-        Returns:
-            Numpy array of selected action
+    def compute_loss(self, states, actions, rewards, next_states, done):
         """
-        # Convert state to tensor
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-
-        # Sample action from policy
-        with torch.no_grad():
-            action, log_probs = self.actor.sample_action(state, deterministic)
-
-        return action.detach().cpu().numpy()[0], log_probs.detach().cpu().numpy()[0]
-    
-    def compute_loss(self, observation, action, reward, next_observation):
+        Train the maml xd
         """
-        Train the SAC agent using a batch from replay buffer
-        """
-        
-        # Scale rewards for training
-        scaled_rewards = reward * self.reward_scale
+        scaled_rewards = rewards * self.reward_scale
+        print(rewards)
 
         # Convert to tensors
-        states = torch.FloatTensor(observation).to(self.device)
-        actions = torch.FloatTensor(action).to(self.device)
+        states = torch.FloatTensor(states).to(self.device)
+        actions = torch.FloatTensor(actions).to(self.device)
         rewards = torch.FloatTensor(scaled_rewards).to(self.device)
         next_states = torch.FloatTensor(next_states).to(self.device)
         done = torch.FloatTensor(done).to(self.device)
@@ -148,7 +128,6 @@ class SACAgent(Agent):
         # Optimize critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        self.critic_optimizer.step()
 
         sampled_actions, log_probs = self.actor.sample_action(states)
         q1_pi, q2_pi = self.critic(states, sampled_actions)
@@ -160,18 +139,19 @@ class SACAgent(Agent):
         # Optimize actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        self.actor_optimizer.step()
 
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)
 
         return actor_loss.item(), critic_loss.item()
 
-    def train(self) -> None:
+    def train(self, update=True, custom_buffer=None) -> None:
         """
         Train the SAC agent using a batch from replay buffer
         """
-
+        if custom_buffer is not None:
+            self.replay_buffer = custom_buffer
+            
         states, actions, rewards, next_states, done = self.replay_buffer.sample(
             self.batch_size
         )
@@ -221,7 +201,9 @@ class SACAgent(Agent):
         # Optimize critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        self.critic_optimizer.step()
+        
+        if update:
+            self.critic_optimizer.step()
 
         sampled_actions, log_probs = self.actor.sample_action(states)
         q1_pi, q2_pi = self.critic(states, sampled_actions)
@@ -233,7 +215,9 @@ class SACAgent(Agent):
         # Optimize actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        self.actor_optimizer.step()
+        
+        if update:
+            self.actor_optimizer.step()
 
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)

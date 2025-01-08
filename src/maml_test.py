@@ -34,26 +34,11 @@ def train_maml_agent_citylearn(env: CityLearnEnv, maml_agent: MAMLAgent, episode
         episodes: Number of episodes for training.
     """
     for episode in range(episodes):
-        task_trajectories = [[] for _ in range(len(maml_agent.base_agents))]
         observation = env.reset()
         
         while not env.done:
-            actions_and_log_probs = [
-                maml_agent.base_agents[i].select_action_with_log_probs(observation[i]).tolist()
-                for i in range(len(maml_agent.base_agents))
-            ]
-            
-            actions = [action[0] for action in actions_and_log_probs]
-            log_probs = [action[1] for action in actions_and_log_probs]
-            
-            next_observation, reward, _, done = env.step(actions)
-            for i in range(len(maml_agent.base_agents)):
-                task_trajectories[i].append((observation[i], actions[i],
-                                              reward[i], next_observation[i], log_probs[i]))
-            observation = next_observation
-
-            maml_agent.inner_adaptation(task_trajectories)
-            meta_losses = maml_agent.compute_meta_losses(task_trajectories)
+            maml_agent.inner_adaptation(observation, env)
+            meta_losses = maml_agent.compute_meta_losses(observation, env)
             maml_agent.outer_update(meta_losses)
             
         print(f"Episode {episode+1}/{episodes} complete.")
@@ -95,8 +80,8 @@ def create_environment(
 def create_agents(
     env: CityLearnEnv,
     central_agent: bool = False,
-    hidden_dim: int = 256,
-    buffer_size: int = 100000,
+    hidden_dim: int = 64,
+    buffer_size: int = 1000,
     learning_rate: float = 3e-4,
     gamma: float = 0.99,
     tau: float = 0.01,
@@ -130,7 +115,7 @@ def create_agents(
         building_number = 3
 
     agents = []
-    for _ in range(building_number):
+    for _ in range(1):
         agents.append(
             SACAgent(
                 observation_space_dim=observation_space_dim,
@@ -151,5 +136,5 @@ def create_agents(
 if __name__ == "__main__":
     env = create_environment(central_agent=False, SEED=SEED, path="data/citylearn_challenge_2023_phase_1")
     sac_agents = create_agents(env, central_agent=False)
-    maml_agent = MAMLAgent(sac_agents, inner_lr=0.01, outer_lr=0.001, n_inner_steps=1, meta_batch_size=3)
+    maml_agent = MAMLAgent(sac_agents[0], inner_lr=0.01, outer_lr=0.001, n_inner_steps=1, meta_batch_size=3)
     train_maml_agent_citylearn(env, maml_agent, episodes=TRAINING_EPISODES)
