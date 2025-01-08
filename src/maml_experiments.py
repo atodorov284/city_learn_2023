@@ -7,6 +7,7 @@ import torch
 from citylearn.citylearn import CityLearnEnv
 from matplotlib import pyplot as plt
 from typing import List
+from copy import deepcopy
 
 from agents.sac import SACAgent
 from agents.autoencoder import SACEncoder
@@ -14,34 +15,20 @@ from agents.autoencoder import SACEncoder
 # VARIABLE DEFINITIONS--------------------
 SEED = 0
 
-CENTRALIZED_OBSERVATION_DIMENSION = 77
 DECENTRALIZED_OBSERVATION_DIMENSION = 39
 
-CENTRALIZED_ACTION_DIMENSION = 18
 DECENTRALIZED_ACTION_DIMENSION = 6
-
-ENCODER_HIDDEN_DIMENSION = 65
-ENCODER_OUTPUT_DIMENSION = 50  # should be smaller than the observation dimension
 
 TRAINING_EPISODES = 100
 # ---------------------------------------
 
 
-def train_sac_agent(
+def train_maml_agent(
     env: CityLearnEnv,
-    agents: list[SACAgent],
+    agent: SACAgent,
     episodes: int = 100,
-    central_agent: bool = False,
-    use_random_encoder: bool = True,
 ) -> None:
     """Train SAC agent in the environment"""
-    encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
-
-    if not use_random_encoder:
-        #check whether file exists
-        if not Path("encoder.pt").exists():
-            raise FileNotFoundError("encoder.pt not found - train the encoder before trying to load it")
-        encoder.load_state_dict(torch.load("encoder.pt"))
 
     reward_list = []    # List to store rewards
     day_rewards = []    # List to store daily rewards
@@ -55,28 +42,18 @@ def train_sac_agent(
         episode_reward = 0
         curr_day_reward = 0
 
-        with torch.no_grad():
-            # observation = encoder.encode(observation)
-            pass
-
+        # copy the current policy
+        copied_policy = copy_current_policy(agent)
         while not env.done:
             # merge observations in a single array
-            if central_agent:
-                flat_observation = (
-                    np.concatenate(observation)
-                    if isinstance(observation, list)
-                    else observation
-                )
 
             # select actions based on different paradigms
-            if not central_agent:
-                actions = [0 for _ in range(len(agents))]
 
-                for i in range(len(agents)):
-                    # agent_actions is used for the replay buffer
-                    actions[i] = agents[i].select_action(observation[i]).tolist()
-            else:
-                actions = [agents[0].select_action(flat_observation).tolist()]
+            actions = [0 for _ in range(len(agents))]
+
+            for i in range(len(agents)):
+                # agent_actions is used for the replay buffer
+                actions[i] = agents[i].select_action(observation[i]).tolist()
 
             # print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
             for agent in agents:
@@ -85,11 +62,6 @@ def train_sac_agent(
             # take a step
             next_observation, reward, info, done = env.step(actions)
 
-            # encode the next observation
-            with torch.no_grad():
-                # next_observation = encoder.encode(next_observation)
-                pass
-
             reward_list.append(np.sum(reward))
             curr_day_reward += np.sum(reward)
 
@@ -97,33 +69,19 @@ def train_sac_agent(
                 day_rewards.append(np.mean(curr_day_reward))
                 curr_day_reward = 0
 
-            if central_agent:
-                flat_next_observation = (
-                    np.concatenate(next_observation)
-                    if isinstance(next_observation, list)
-                    else next_observation
-                )
 
             episode_reward += np.sum(reward)
 
             # store the transition in the replay buffer
-            if not central_agent:
-                for i in range(len(agents)):
-                    agents[i].replay_buffer.push(
-                        observation[i],
-                        actions[i],
-                        reward[i],
-                        next_observation[i],
-                        len(done),
-                    )
-            else:
-                agents[0].replay_buffer.push(
-                    flat_observation,
-                    actions,
-                    np.sum(reward),
-                    flat_next_observation,
+            for i in range(len(agents)):
+                agents[i].replay_buffer.push(
+                    observation[i],
+                    actions[i],
+                    reward[i],
+                    next_observation[i],
                     len(done),
                 )
+          
 
             # train the agents if enough timesteps have passed
             if agents[0].total_steps >= agents[0].exploration_timesteps:
@@ -136,15 +94,28 @@ def train_sac_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
 
-        if central_agent:
-            plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
-        else:
-            plot_rewards(day_rewards, agent_type="decentralized", plot_folder="plots/")
+        plot_rewards(day_rewards, agent_type="MAML", plot_folder="plots/")
        
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards
 
+def copy_current_policy(agent: SACAgent):
+    copied_policy = SACEncoder(
+        observation_space_dim=agent.observation_space_dim,
+        action_space_dim=agent.action_space_dim,
+        hidden_dim=agent.hidden_dim,
+        buffer_size=agent.buffer_size,
+        batch_size=agent.batch_size,
+        learning_rate=agent.learning_rate,
+        gamma=agent.gamma,
+        tau=agent.tau,
+        alpha=agent.alpha,
+        action_space=agent.action_space,
+        exploration_timesteps=agent.exploration_timesteps,
+    )
+    copied_policy.load_state_dict(deepcopy(agent.actor.state_dict()))
+    return copied_policy
 
 def set_seed(seed: int = 0) -> None:
     """Set a seed used in the simulation."""
@@ -248,7 +219,7 @@ def plot_rewards(
         rewards: List of rewards to plot
         agent_type: Type of agent ("centralized", "decentralized", or "both")
     """
-    valid_types = ["centralized", "decentralized", "both"]
+    valid_types = ["centralized", "decentralized", "MAML"]
     if agent_type.lower() not in valid_types:
         raise ValueError(f"agent_type must be one of {valid_types}")
 
@@ -274,7 +245,7 @@ def plot_rewards(
     title_prefix = {
         "centralized": "Centralized",
         "decentralized": "Decentralized",
-        "both": "Centralized vs Decentralized",
+        "MAML": "MAML",
     }
     plt.title(
         f"{title_prefix[agent_type.lower()]} SAC Agent Rewards Over Time",
@@ -311,27 +282,16 @@ def evaluate_agent_performance(env: CityLearnEnv) -> None:
 
 if __name__ == "__main__":
     # Create the environments
-    centralized_env = create_environment(
-        central_agent=True, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
-    )
     # decentralized_env = create_environment(central_agent=False, SEED=SEED,  path="data/citylearn_challenge_2023_phase_1")
 
     # Create the agents
-    centralized_agent = create_agents(centralized_env, central_agent=True)
     # decentralized_agent = create_agents(decentralized_env, central_agent=False)
 
     # Train the agent
-    rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
-        train_sac_agent(
-            centralized_env, centralized_agent, episodes=TRAINING_EPISODES, central_agent=True
-        )
-    )
     # rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=TRAINING_EPISODES, central_agent=False)
 
     # Plot the rewards
-    #plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
     # plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")
 
     # Evaluate the agent
-    evaluate_agent_performance(centralized_env)
     # evaluate_agent_performance(decentralized_env)
