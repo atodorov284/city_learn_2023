@@ -319,7 +319,8 @@ if __name__ == "__main__":
     # Create the agents
     centralized_agent = create_agents(centralized_env, central_agent=True)
     # decentralized_agent = create_agents(decentralized_env, central_agent=False)
-
+    
+    print(centralized_agent[0].device)
     # Train the agent
     rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
         train_sac_agent(

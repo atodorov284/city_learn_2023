@@ -41,23 +41,21 @@ def train_maml_agent(
 
         episode_reward = 0
         curr_day_reward = 0
+        current_timestep = 0
 
         # copy the current policy
         copied_policy = copy_current_policy(agent)
         while not env.done:
-            # merge observations in a single array
-
-            # select actions based on different paradigms
-
+            
+            building_to_modify =  current_timestep % 3
             actions = [0 for _ in range(len(agents))]
 
-            for i in range(len(agents)):
-                # agent_actions is used for the replay buffer
-                actions[i] = agents[i].select_action(observation[i]).tolist()
+            # select the initial 3 actions
+            for i in range(3):    
+                actions[i] = agent.select_action(observation[i]).tolist()
 
-            # print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
-            for agent in agents:
-                agent.total_steps += 1
+            print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
+            agent.total_steps += 1
 
             # take a step
             next_observation, reward, info, done = env.step(actions)
@@ -73,20 +71,21 @@ def train_maml_agent(
             episode_reward += np.sum(reward)
 
             # store the transition in the replay buffer
-            for i in range(len(agents)):
-                agents[i].replay_buffer.push(
+            for i in range(3):
+                agent.replay_buffer.push(
                     observation[i],
                     actions[i],
                     reward[i],
                     next_observation[i],
                     len(done),
                 )
+            current_timestep += 1
+       
           
 
             # train the agents if enough timesteps have passed
-            if agents[0].total_steps >= agents[0].exploration_timesteps:
-                for agent in agents:
-                    agent.train()
+            if agent.total_steps >= agent.exploration_timesteps:
+                copied_policy.train()
 
             observation = next_observation
 
@@ -95,7 +94,6 @@ def train_maml_agent(
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
 
         plot_rewards(day_rewards, agent_type="MAML", plot_folder="plots/")
-       
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards

@@ -74,7 +74,7 @@ class CustomRewardFunction(ComfortReward):
             temp_difference = np.abs(indoor_temperature - set_point)
 
             if temp_difference > tolerance:
-                reward = -((temp_difference - tolerance) ** 2)
+                reward = -((temp_difference) ** 2)
 
             else:
                 reward = 0
