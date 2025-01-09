@@ -26,7 +26,16 @@ ENCODER_OUTPUT_DIMENSION = 20  # should be smaller than the observation dimensio
 
 TRAINING_EPISODES = 150
 # ---------------------------------------
-
+def set_learning_rates_for_inner_agents(agents: list[SACAgent], lr):
+    """
+    Set the learning rates for the inner agents (the agents
+    adapted to individual tasks in the inner loop of MAML).
+    Done so that the inner agents learn faster than the main
+    network to ensure stability.
+    """
+    for agent in agents:
+        agent.actor_optimizer = torch.optim.Adam(agent.actor.parameters(), lr=lr)
+        agent.critic_optimizer = torch.optim.Adam(agent.critic.parameters(), lr=lr * 2)
 
 def train_maml_agent(
     env: CityLearnEnv,
@@ -48,6 +57,8 @@ def train_maml_agent(
     critic_optimizer = torch.optim.Adam(base_agent.critic.parameters(), lr=3e-4 * 2)
 
     copied_agents = [deepcopy(base_agent) for _ in range(building_count)]
+    #set_learning_rates_for_inner_agents(copied_agents, 3e-3)
+    
     
     building_buffers = [ReplayBuffer(capacity=1) for _ in range(building_count)]
 
@@ -62,7 +73,7 @@ def train_maml_agent(
 
         while not env.done:
             
-            if base_agent.total_steps % 10 == 0: #10 + 150 episodes fine
+            if base_agent.total_steps % 3 == 0: #10 + 150 episodes fine
                 actor_optimizer.zero_grad()
                 critic_optimizer.zero_grad()
 
@@ -86,7 +97,7 @@ def train_maml_agent(
                 critic_optimizer.step()
 
                 copied_agents = [deepcopy(base_agent) for _ in range(building_count)]
-                
+                #set_learning_rates_for_inner_agents(copied_agents, 3e-3)
                 
             # select actions based on different paradigms
             actions = [0 for _ in range(building_count)]
@@ -124,7 +135,7 @@ def train_maml_agent(
             total_agent_loss = 0
             total_critic_loss = 0
             for i in range(building_count):
-                agent_loss, critic_loss = copied_agents[0].train(update=True, custom_buffer=building_buffers[i])
+                agent_loss, critic_loss = copied_agents[i].train(update=True, custom_buffer=building_buffers[i])
                 total_agent_loss += agent_loss
                 total_critic_loss += critic_loss
                 # print(f"Building {i} Loss: {agent_loss}, Critic Loss: {critic_loss}")
