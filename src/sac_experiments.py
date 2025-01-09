@@ -23,7 +23,7 @@ DECENTRALIZED_ACTION_DIMENSION = 6
 ENCODER_HIDDEN_DIMENSION = 65
 ENCODER_OUTPUT_DIMENSION = 50  # should be smaller than the observation dimension
 
-TRAINING_EPISODES = 100
+TRAINING_EPISODES = 150
 # ---------------------------------------
 
 
@@ -320,7 +320,6 @@ if __name__ == "__main__":
     centralized_agent = create_agents(centralized_env, central_agent=True)
     # decentralized_agent = create_agents(decentralized_env, central_agent=False)
     
-    print(centralized_agent[0].device)
     # Train the agent
     rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
         train_sac_agent(
