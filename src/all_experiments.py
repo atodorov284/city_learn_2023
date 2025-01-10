@@ -10,6 +10,7 @@ from typing import List
 
 from agents.sac import SACAgent
 from agents.autoencoder import SACEncoder
+from maml_experiments import train_maml_agent
 
 # VARIABLE DEFINITIONS--------------------
 SEED = 0
@@ -23,7 +24,7 @@ DECENTRALIZED_ACTION_DIMENSION = 6
 ENCODER_HIDDEN_DIMENSION = 65
 ENCODER_OUTPUT_DIMENSION = 50  # should be smaller than the observation dimension
 
-TRAINING_EPISODES = 1
+TRAINING_EPISODES = 5
 # ---------------------------------------
 
 
@@ -320,17 +321,28 @@ def plot_rewards(
         steps = range(1, len(rewards) + 1)
 
         # Plot raw rewards with low alpha
-        plt.plot(steps, rewards, alpha=0.15, color=colors[agent_type])
+        #plt.plot(steps, rewards, alpha=0.2, color=colors[agent_type])
 
         # Add rolling average
-        window_size = 15
-        rolling_mean = pd.Series(rewards).rolling(window=window_size, min_periods=1).mean()
+        window_size = 24
+        # Calculate rolling mean and SEM
+        rolling_data = pd.Series(rewards).rolling(window=window_size, min_periods=1)
+        rolling_mean = rolling_data.mean()
+        rolling_sem = rolling_data.std() / np.sqrt(window_size)
         plt.plot(
             steps,
             rolling_mean,
             color=colors[agent_type],
             linewidth=2,
-            label=f"{agent_type.capitalize()} ({window_size}-step Moving Average)",
+            label=f"{agent_type.capitalize()}"
+        )
+        # Add SEM bands
+        plt.fill_between(
+            steps,
+            rolling_mean - rolling_sem,
+            rolling_mean + rolling_sem,
+            color=colors[agent_type],
+            alpha=0.1
         )
 
     plt.title(
@@ -385,9 +397,22 @@ if __name__ == "__main__":
     rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=TRAINING_EPISODES, central_agent=False)
 
 
+    # MAML shit
+    # Create the environment
+    maml_env = create_environment(central_agent=False, SEED=SEED,  path="data/citylearn_challenge_2023_phase_1")
+
+    # Create the agents
+    maml_agent = create_agents(maml_env, central_agent=False)
+    
+    # Train the agents
+    rewards_maml, episode_rewards_maml, daily_rewards_maml = train_maml_agent(maml_env, maml_agent, episodes=TRAINING_EPISODES)
+
+
+
     rewards_dict = {
         'centralized': daily_rewards_centralized,
         'decentralized': daily_rewards_decentralized,
+        'maml': daily_rewards_maml
     }
 
     plot_rewards(rewards_dict, plot_folder="plots/")
@@ -401,3 +426,5 @@ if __name__ == "__main__":
     evaluate_agent_performance(centralized_env)
     print("decentralized:")
     evaluate_agent_performance(decentralized_env)
+    print("maml:")
+    evaluate_agent_performance(maml_env)
