@@ -74,7 +74,7 @@ def train_sac_agent(
 
                 for i in range(len(agents)):
                     # agent_actions is used for the replay buffer
-                    actions[i] = agents[i].select_action(observation[i]).tolist()
+                    actions[i] = agents[i].select_action(np.array(observation[i])).tolist()
             else:
                 actions = [agents[0].select_action(flat_observation).tolist()]
 

@@ -6,7 +6,6 @@ import pandas as pd
 import torch
 from citylearn.citylearn import CityLearnEnv
 from matplotlib import pyplot as plt
-from typing import List
 
 from agents.sac import SACAgent
 from agents.autoencoder import SACEncoder
@@ -27,7 +26,7 @@ TRAINING_EPISODES = 150
 
 def train_sac_agent(
     env: CityLearnEnv,
-    agents: list[SACAgent],
+    agent: SACAgent,
     episodes: int = 100,
     use_random_encoder: bool = True,
 ) -> None:
@@ -65,11 +64,11 @@ def train_sac_agent(
             )
 
             # select actions
-            actions = [agents[0].select_action(flat_observation).tolist()]
+            actions = [agent.select_action(flat_observation).tolist()]
 
             # print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
            
-            agents[0].total_steps += 1
+            agent.total_steps += 1
 
             # take a step
             next_observation, reward, info, done = env.step(actions)
@@ -96,7 +95,7 @@ def train_sac_agent(
             episode_reward += np.sum(reward)
 
             # store the transition in the replay buffer
-            agents[0].replay_buffer.push(
+            agent.replay_buffer.push(
                 flat_observation,
                 actions,
                 np.sum(reward),
@@ -105,9 +104,8 @@ def train_sac_agent(
             )
 
             # train the agents if enough timesteps have passed
-            if agents[0].total_steps >= agents[0].exploration_timesteps:
-                for agent in agents:
-                    agent.train()
+            if agent.total_steps >= agent.exploration_timesteps:
+                agent.train()
 
             observation = next_observation
 
@@ -133,9 +131,9 @@ def set_seed(seed: int = 0) -> None:
 
 def create_environment(
     central_agent: bool = True,
-    SEED=0,
+    SEED: int =0,
     path: str = "data/citylearn_challenge_2023_phase_1",
-):
+) -> CityLearnEnv:
     """
     Creates the CityLearn environment.
     Args:
@@ -170,9 +168,9 @@ def create_agents(
     alpha: float = 0.05,
     batch_size: int = 256,
     exploration_timesteps: int = 0,
-) -> List[SACAgent]:
+) -> SACAgent:
     """
-    Creates the agents with the given specification.
+    Creates the agent with the given specification.
     Args:
         env: The CityLearn environment.
         central_agent: Whether to create a central agent.
@@ -185,17 +183,13 @@ def create_agents(
         batch_size: The batch size used for the SAC agent.
         exploration_timesteps: The number of exploration timesteps for the SAC agent.
     Returns:
-        Agent or a list of agents
+        SAC agent
     """
 
     observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION 
     action_space_dim = CENTRALIZED_ACTION_DIMENSION
-    building_number = 1
 
-    agents = []
-    for _ in range(building_number):
-        agents.append(
-            SACAgent(
+    agent = SACAgent(
                 observation_space_dim=observation_space_dim,
                 action_space_dim=action_space_dim,
                 hidden_dim=hidden_dim,
@@ -208,8 +202,7 @@ def create_agents(
                 action_space=env.action_space,
                 exploration_timesteps=exploration_timesteps,
             )
-        )
-    return agents
+    return agent
 
 
 def plot_rewards(
@@ -287,7 +280,7 @@ if __name__ == "__main__":
         central_agent=True, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
     )
 
-    # Create the agents
+    # Create the agent
     centralized_agent = create_agents(centralized_env, central_agent=True)
     
     # Train the agent

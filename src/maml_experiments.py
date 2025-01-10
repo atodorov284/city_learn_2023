@@ -26,7 +26,7 @@ ENCODER_OUTPUT_DIMENSION = 20  # should be smaller than the observation dimensio
 
 TRAINING_EPISODES = 150
 # ---------------------------------------
-def set_learning_rates_for_inner_agents(agents: list[SACAgent], lr):
+def set_learning_rates_for_inner_agents(agents: list[SACAgent], lr: float) -> None:
     """
     Set the learning rates for the inner agents (the agents
     adapted to individual tasks in the inner loop of MAML).
@@ -60,7 +60,7 @@ def train_maml_agent(
     #set_learning_rates_for_inner_agents(copied_agents, 3e-3)
     
     
-    building_buffers = [ReplayBuffer(capacity=1) for _ in range(building_count)]
+    building_buffers = [ReplayBuffer(capacity=100000) for _ in range(building_count)]
 
 
     for episode in range(episodes):
@@ -73,7 +73,7 @@ def train_maml_agent(
 
         while not env.done:
             
-            if base_agent.total_steps % 3 == 0: #10 + 150 episodes fine
+            if base_agent.total_steps % 100 == 0: #10 + 150 episodes fine
                 actor_optimizer.zero_grad()
                 critic_optimizer.zero_grad()
 
@@ -103,7 +103,7 @@ def train_maml_agent(
             actions = [0 for _ in range(building_count)]
             for i in range(building_count):
                 # agent_actions is used for the replay buffer
-                actions[i] = copied_agents[i].select_action(observation[i]).tolist()
+                actions[i] = copied_agents[i].select_action(np.array(observation[i])).tolist()
 
             # print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
             for agent in agents: # what the hell is this 
@@ -162,9 +162,9 @@ def set_seed(seed: int = 0) -> None:
 
 def create_environment(
     central_agent: bool = True,
-    SEED=0,
+    SEED: int =0,
     path: str = "data/citylearn_challenge_2023_phase_1",
-):
+)-> CityLearnEnv:
     """
     Creates the CityLearn environment.
     Args:
@@ -218,7 +218,6 @@ def create_agents(
     """
     observation_space_dim = DECENTRALIZED_OBSERVATION_DIMENSION
     action_space_dim = DECENTRALIZED_ACTION_DIMENSION
-    building_number = 3
 
     agents = []
     agents.append(

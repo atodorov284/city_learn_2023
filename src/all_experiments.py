@@ -75,7 +75,7 @@ def train_sac_agent(
 
                 for i in range(len(agents)):
                     # agent_actions is used for the replay buffer
-                    actions[i] = agents[i].select_action(observation[i]).tolist()
+                    actions[i] = agents[i].select_action(np.array(observation[i])).tolist()
             else:
                 actions = [agents[0].select_action(flat_observation).tolist()]
 
@@ -152,9 +152,9 @@ def set_seed(seed: int = 0) -> None:
 
 def create_environment(
     central_agent: bool = True,
-    SEED=0,
+    SEED: int =0,
     path: str = "data/citylearn_challenge_2023_phase_1",
-):
+) -> CityLearnEnv:
     """
     Creates the CityLearn environment.
     Args:
@@ -346,7 +346,7 @@ def plot_rewards(
         )
 
     plt.title(
-        f"Agent Performance Comparison",
+        "Agent Performance Comparison",
         fontsize=16,
         fontweight="bold",
     )
