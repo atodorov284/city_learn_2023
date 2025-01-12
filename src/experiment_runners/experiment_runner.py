@@ -217,7 +217,7 @@ def train_decentralized_agent(
             current_daily_reward += np.sum(reward)
             
             if agents[0].total_steps % 24 == 0:
-                daily_rewards.append(np.mean(current_daily_reward))
+                day_rewards.append(np.mean(current_daily_reward))
                 current_daily_reward = 0
             
             episode_return += np.sum(reward)
