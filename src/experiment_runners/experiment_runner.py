@@ -110,6 +110,7 @@ def train_centralized_agent(
     env: CityLearnEnv,
     agent: SACAgent,
     episodes: int = 100,
+    experiment_id: str = None
 ) -> Tuple[List[float], List[float], List[float]]:
     """
     Train the central agent.
@@ -176,7 +177,7 @@ def train_centralized_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
 
-        plot_single_agent(day_rewards, agent_type="centralized", plot_folder="plots/")
+        plot_single_agent(day_rewards, agent_type="centralized", plot_folder="plots/", experiment_id=experiment_id)
 
     return reward_list, episode_returns, day_rewards
 
@@ -185,6 +186,7 @@ def train_decentralized_agent(
     env: CityLearnEnv,
     agents: list[SACAgent],
     episodes: int = 100,
+    experiment_id: str = None
 ) -> Tuple[List[float], List[float], List[float]]:
     """
     Train the central agent.
@@ -244,7 +246,7 @@ def train_decentralized_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
 
-        plot_single_agent(day_rewards, agent_type="decentralized", plot_folder="plots/")
+        plot_single_agent(day_rewards, agent_type="decentralized", plot_folder="plots/", experiment_id=experiment_id)
 
     return reward_list, episode_returns, day_rewards
 
@@ -256,6 +258,7 @@ def train_maml_agent(
     building_count: int = 1,
     learning_rate: float = 3e-4,
     k_shots: int = 3,
+    experiment_id: str = None
 ) -> Tuple[List[float], List[float], List[float]]:
     """Train the MAML agent.
     Args:
@@ -354,7 +357,7 @@ def train_maml_agent(
         episode_returns.append(episode_return)
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
 
-        plot_single_agent(day_rewards, agent_type="maml", plot_folder="plots/")
+        plot_single_agent(day_rewards, agent_type="maml", plot_folder="plots/", experiment_id=experiment_id)
 
     return reward_list, episode_returns, day_rewards
 
@@ -364,6 +367,7 @@ def setup_single_agent(
     seed: int = 0,
     hyperparameters_dict: dict = {},
     episodes: int = 100,
+    experiment_id: str = None
 ) -> List[float]:
     set_seed(seed)
 
@@ -404,6 +408,7 @@ def setup_single_agent(
         num_buildings=num_buildings,
     )
     print("-" * 50)
+    print(f"Experiment ID: {experiment_id}")
     print(f"Agent type: {agent_type}")
     print(f"Number of buildings: {num_buildings}")
     print(f"Observation space dimension: {observation_space_dim}")
@@ -445,7 +450,7 @@ def setup_single_agent(
 
 
 def setup_all_agents(
-    seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}
+    seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}, experiment_id: str = None
 ) -> None:
     agent_types = ["centralized", "decentralized", "maml"]
     results = {}
@@ -456,6 +461,7 @@ def setup_all_agents(
             seed=seed,
             episodes=episodes,
             hyperparameters_dict=hyperparameters_dict,
+            experiment_id=experiment_id
         )
 
     with ThreadPoolExecutor(max_workers=len(agent_types)) as executor:
@@ -469,4 +475,4 @@ def setup_all_agents(
             except Exception as e:
                 print(f"Error processing agent {agent_type}: {e}")
 
-    plot_all_agents(results, plot_folder="plots/")
+    plot_all_agents(results, plot_folder="plots/", experiment_id=experiment_id)

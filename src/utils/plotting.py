@@ -8,6 +8,7 @@ def plot_single_agent(
     agent_type: str = "centralized",
     plot_folder: str = "plots/",
     window_size: int = 15,
+    experiment_id: str = None
 ) -> None:
     """
     Plots the rewards for different agent types.
@@ -61,12 +62,12 @@ def plot_single_agent(
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ",")))
 
     plt.tight_layout()
-    save_path = plot_folder + f"step_rewards_{agent_type.lower()}.png"
+    save_path = plot_folder + f"step_rewards_{agent_type.lower()}+{experiment_id}.png"
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
 
 def plot_all_agents(
-    rewards_dict: dict[str, list[float]], plot_folder: str = "plots/"
+    rewards_dict: dict[str, list[float]], plot_folder: str = "plots/", experiment_id: str = None
 ) -> None:
     """
     Plots the rewards for different agent types on the same plot.
@@ -127,5 +128,5 @@ def plot_all_agents(
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ",")))
 
     plt.tight_layout()
-    save_path = plot_folder + "comparison_rewards.png"
+    save_path = plot_folder + f"comparison_rewards_{experiment_id}.png"
     plt.savefig(save_path, dpi=300, bbox_inches="tight")

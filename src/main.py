@@ -1,4 +1,5 @@
 import argparse
+import uuid
 from experiment_runners import experiment_runner
 
 
@@ -25,6 +26,8 @@ def main() -> None:
     parser.add_argument("--k_shots", type=int, default=3)
 
     args = parser.parse_args()
+    
+    experiment_id = str(uuid.uuid4().hex)
 
     hyperparameters_dict = {
         "hidden_dim": args.hidden_size,
@@ -42,6 +45,7 @@ def main() -> None:
             seed=args.seed,
             episodes=args.episodes,
             hyperparameters_dict=hyperparameters_dict,
+            experiment_id=experiment_id
         )
     else:
         experiment_runner.setup_single_agent(
@@ -49,6 +53,7 @@ def main() -> None:
             seed=args.seed,
             episodes=args.episodes,
             hyperparameters_dict=hyperparameters_dict,
+            experiment_id=experiment_id
         )
 
 
