@@ -163,6 +163,8 @@ def train_centralized_agent(
                 flat_next_observation,
                 len(done),
             )
+            
+            agent.train()
 
             observation = next_observation
 
@@ -223,6 +225,9 @@ def train_decentralized_agent(
                     next_observation[i],
                     len(done),
                 )
+                
+            for agent in agents:
+                agent.train()
 
             observation = next_observation
 
