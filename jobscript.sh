@@ -7,5 +7,5 @@
 
 source .venv/bin/activate
 
-python src/main.py --agent_type centralized --episodes 150
+python src/main.py --agent_type maml --episodes 150
 
