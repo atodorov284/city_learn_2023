@@ -62,7 +62,7 @@ def plot_single_agent(
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ",")))
 
     plt.tight_layout()
-    save_path = plot_folder + f"step_rewards_{agent_type.lower()}+{experiment_id}.png"
+    save_path = plot_folder + f"step_rewards_{agent_type.lower()}_{experiment_id}.png"
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
 

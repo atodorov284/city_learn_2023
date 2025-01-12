@@ -430,6 +430,7 @@ def setup_single_agent(
             env=environment,
             agent=agents[0],
             episodes=episodes,
+            experiment_id=experiment_id
         )
 
     elif agent_type == "decentralized":
@@ -437,6 +438,7 @@ def setup_single_agent(
             env=environment,
             agents=agents,
             episodes=episodes,
+            experiment_id=experiment_id
         )
 
     elif agent_type == "maml":
@@ -446,6 +448,7 @@ def setup_single_agent(
             episodes=episodes,
             building_count=num_buildings,
             k_shots=k_shots,
+            experiment_id=experiment_id
         )
 
 
