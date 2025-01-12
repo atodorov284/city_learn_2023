@@ -2,22 +2,19 @@ import random
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
-import os
-import sys
 from citylearn.citylearn import CityLearnEnv
-from matplotlib import pyplot as plt
 from typing import List
 
 from agents.sac import SACAgent
-from agents.autoencoder import SACEncoder
 
 from copy import deepcopy
 
 from utils.replay_buffer import ReplayBuffer
 
-from utils.plotting import plot_single_agent
+from utils.plotting import plot_single_agent, plot_all_agents
+
+from typing import Tuple
 
 
 def set_seed(seed: int = 0) -> None:
@@ -109,7 +106,7 @@ def train_centralized_agent(
     env: CityLearnEnv,
     agent: SACAgent,
     episodes: int = 100,
-) -> List[float]:
+) -> Tuple[List[float], List[float], List[float]]:
     """
     Train the central agent.
     Args:
@@ -175,14 +172,14 @@ def train_centralized_agent(
 
         plot_single_agent(day_rewards, agent_type="centralized", plot_folder="plots/")
 
-    return reward_list
+    return reward_list, episode_returns, day_rewards
 
 
 def train_decentralized_agent(
     env: CityLearnEnv,
     agents: list[SACAgent],
     episodes: int = 100,
-) -> List[float]:
+) -> Tuple[List[float], List[float], List[float]]:
     """
     Train the central agent.
     Args:
@@ -192,11 +189,11 @@ def train_decentralized_agent(
     Returns:
         The list of rewards
     """
-    
+
     reward_list = []
     day_rewards = []
     episode_returns = []
-    
+
     for episode in range(episodes):
         observation = env.reset()
 
@@ -213,11 +210,11 @@ def train_decentralized_agent(
                 agent.total_steps += 1
 
             next_observation, reward, info, done = env.step(actions)
-            
+
             reward_list.append(reward)
             current_daily_reward += np.sum(reward)
             episode_return += np.sum(reward)
-            
+
             for i in range(len(agents)):
                 agents[i].replay_buffer.push(
                     observation[i],
@@ -226,17 +223,17 @@ def train_decentralized_agent(
                     next_observation[i],
                     len(done),
                 )
-                
+
             observation = next_observation
 
         episode_returns.append(episode_return)
-        
+
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
-        
+
         plot_single_agent(day_rewards, agent_type="decentralized", plot_folder="plots/")
-        
-    return reward_list
-            
+
+    return reward_list, episode_returns, day_rewards
+
 
 def train_maml_agent(
     env: CityLearnEnv,
@@ -244,8 +241,8 @@ def train_maml_agent(
     episodes: int = 100,
     building_count: int = 1,
     learning_rate: float = 3e-4,
-    k_shots: int = 3
-) -> List[float]:
+    k_shots: int = 3,
+) -> Tuple[List[float], List[float], List[float]]:
     """Train the MAML agent.
     Args:
         env: The CityLearn environment.
@@ -257,18 +254,20 @@ def train_maml_agent(
     reward_list = []
     day_rewards = []
     episode_returns = []
-    
+
     actor_optimizer = torch.optim.Adam(base_agent.actor.parameters(), lr=learning_rate)
 
-    critic_optimizer = torch.optim.Adam(base_agent.critic.parameters(), lr=learning_rate)
-        
+    critic_optimizer = torch.optim.Adam(
+        base_agent.critic.parameters(), lr=learning_rate
+    )
+
     copied_agents = [deepcopy(base_agent) for _ in range(building_count)]
-    
+
     building_buffers = [ReplayBuffer(capacity=100000) for _ in range(building_count)]
-    
+
     for episode in range(episodes):
         observation = env.reset()
-        
+
         episode_return = 0
         current_daily_reward = 0
 
@@ -283,9 +282,7 @@ def train_maml_agent(
                     ):
                         if copied_param.grad is not None:
                             if param.grad is None:
-                                param.grad = torch.zeros_like(
-                                    param
-                                )
+                                param.grad = torch.zeros_like(param)
                             param.grad += copied_param.grad / building_count
 
                     for param, copied_param in zip(
@@ -293,9 +290,7 @@ def train_maml_agent(
                     ):
                         if copied_param.grad is not None:
                             if param.grad is None:
-                                param.grad = torch.zeros_like(
-                                    param
-                                )
+                                param.grad = torch.zeros_like(param)
                             param.grad += copied_param.grad / building_count
 
                 actor_optimizer.step()
@@ -308,29 +303,29 @@ def train_maml_agent(
                 actions[i] = (
                     copied_agents[i].select_action(np.array(observation[i])).tolist()
                 )
-                
+
             base_agent.total_steps += 1
-            
+
             next_observation, reward, info, done = env.step(actions)
-            
+
             reward_list.append(reward)
             current_daily_reward += np.sum(reward)
-            
+
             if base_agent.total_steps % 24 == 0:
                 day_rewards.append(np.mean(current_daily_reward))
                 current_daily_reward = 0
-                
+
             episode_return += np.sum(reward)
-            
+
             for building_buffer in building_buffers:
-                    building_buffer.push(
-                        observation[i],
-                        actions[i],
-                        reward[i],
-                        next_observation[i],
-                        len(done),
-                    )
-                    
+                building_buffer.push(
+                    observation[i],
+                    actions[i],
+                    reward[i],
+                    next_observation[i],
+                    len(done),
+                )
+
             total_agent_loss = 0
             total_critic_loss = 0
             for i in range(building_count):
@@ -339,18 +334,16 @@ def train_maml_agent(
                 )
                 total_agent_loss += agent_loss
                 total_critic_loss += critic_loss
-                
+
             observation = next_observation
-            
+
         episode_returns.append(episode_return)
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
-        
+
         plot_single_agent(day_rewards, agent_type="maml", plot_folder="plots/")
-        
-    return reward_list
-            
-    
-    
+
+    return reward_list, episode_returns, day_rewards
+
 
 def setup_single_agent(
     agent_type: str = "centralized",
@@ -358,19 +351,16 @@ def setup_single_agent(
     hyperparameters_dict: dict = {},
     episodes: int = 100,
 ) -> List[float]:
-    
     set_seed(seed)
-    
+
     centralized = True if agent_type == "centralized" else False
-    
+
     environment = create_environment(
         central_agent=centralized,
         SEED=seed,
         path="data/citylearn_challenge_2023_phase_1",
     )
-        
-    
-    
+
     num_buildings = len(environment.buildings)
     observation_space_dim = environment.observation_space[0].shape[0]
     action_space_dim = environment.action_space[0].shape[0]
@@ -382,6 +372,7 @@ def setup_single_agent(
     tau = hyperparameters_dict.get("tau", 0.01)
     alpha = hyperparameters_dict.get("alpha", 0.05)
     batch_size = hyperparameters_dict.get("batch_size", 256)
+    k_shots = hyperparameters_dict.get("k_shots", 3)
 
     agents = create_agents(
         env=environment,
@@ -412,34 +403,59 @@ def setup_single_agent(
     print(f"Tau: {tau}")
     print(f"Alpha: {alpha}")
     print(f"Batch size: {batch_size}")
+    print(f"K-shots: {k_shots} (only used for MAML)")
+    print("-" * 50)
 
     if agent_type == "centralized":
-        rewards = train_centralized_agent(
+        return train_centralized_agent(
             env=environment,
             agent=agents[0],
             episodes=episodes,
         )
-        
+
     elif agent_type == "decentralized":
-        rewards = train_decentralized_agent(
+        return train_decentralized_agent(
             env=environment,
             agents=agents,
             episodes=episodes,
         )
-        
+
     elif agent_type == "maml":
-        rewards = train_maml_agent(
+        return train_maml_agent(
             env=environment,
             base_agent=agents[0],
             episodes=episodes,
             building_count=num_buildings,
+            k_shots=k_shots,
         )
-        
-    return rewards
 
-def setup_all_agents(seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}) -> None:
-    centralized_rewards = setup_single_agent(agent_type="centralized", seed=seed, episodes=episodes, hyperparameters_dict=hyperparameters_dict)
-    decentralized_rewards = setup_single_agent(agent_type="decentralized", seed=seed, episodes=episodes, hyperparameters_dict=hyperparameters_dict)
-    maml_rewards = setup_single_agent(agent_type="maml", seed=seed, episodes=episodes, hyperparameters_dict=hyperparameters_dict)
-    
-    
+
+def setup_all_agents(
+    seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}
+) -> None:
+    _, episode_returns_centralized, daily_rewards_centralized = setup_single_agent(
+        agent_type="centralized",
+        seed=seed,
+        episodes=episodes,
+        hyperparameters_dict=hyperparameters_dict,
+    )
+    _, episode_returns_decentralized, daily_rewards_decentralized = setup_single_agent(
+        agent_type="decentralized",
+        seed=seed,
+        episodes=episodes,
+        hyperparameters_dict=hyperparameters_dict,
+    )
+    _, episode_returns_maml, daily_rewards_maml = setup_single_agent(
+        agent_type="maml",
+        seed=seed,
+        episodes=episodes,
+        hyperparameters_dict=hyperparameters_dict,
+    )
+
+    rewards_dict = {
+        "centralized": daily_rewards_centralized,
+        "decentralized": daily_rewards_decentralized,
+        "maml": daily_rewards_maml,
+    }
+
+    plot_all_agents(rewards_dict, plot_folder="plots/")

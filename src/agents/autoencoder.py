@@ -37,7 +37,7 @@ class SACEncoder(nn.Module):
 
         self.to(self.device)
 
-    def _initialize_weights(self):
+    def _initialize_weights(self) -> None:
         """
         Initialize the weights of the network layers using Xavier initialization.
         """
