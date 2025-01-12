@@ -468,7 +468,7 @@ def setup_all_agents(
             experiment_id=experiment_id
         )
 
-    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+    with ThreadPoolExecutor(max_workers=len(agent_types)) as executor:
         future_to_agent_type = {executor.submit(setup_agent, agent): agent for agent in agent_types}
         
         for future in as_completed(future_to_agent_type):
