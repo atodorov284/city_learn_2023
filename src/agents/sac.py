@@ -24,7 +24,6 @@ class SACAgent(Agent):
         buffer_size: int = 100000,
         batch_size: int = 32,
         action_space=None,
-        exploration_timesteps: int = 1000,
     ) -> None:
         """Initialize the Soft-Actor Critic agent"""
         super().__init__(observation_space_dim, action_space_dim)
@@ -58,7 +57,6 @@ class SACAgent(Agent):
 
         # Tracking
         self.total_steps = 0
-        self.exploration_timesteps = exploration_timesteps
 
         # Initialize statistics for logging
         self.running_reward_mean = 0
@@ -85,7 +83,6 @@ class SACAgent(Agent):
             action, _ = self.actor.sample_action(state, deterministic)
 
         return action.detach().cpu().numpy()[0]
-
 
     def compute_loss(self, states, actions, rewards, next_states, done):
         """
@@ -151,7 +148,7 @@ class SACAgent(Agent):
         """
         if custom_buffer is not None:
             self.replay_buffer = custom_buffer
-            
+
         states, actions, rewards, next_states, done = self.replay_buffer.sample(
             self.batch_size
         )
@@ -201,7 +198,7 @@ class SACAgent(Agent):
         # Optimize critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        
+
         if update:
             self.critic_optimizer.step()
 
@@ -215,7 +212,7 @@ class SACAgent(Agent):
         # Optimize actor
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        
+
         if update:
             self.actor_optimizer.step()
 
@@ -242,64 +239,63 @@ class SACAgent(Agent):
     def save(self, path: str) -> None:
         """
         Save the trained agent's parameters to a file
-        
+
         Args:
             path (str): Path where to save the agent's parameters
         """
-        torch.save({
-            # Model architectures and weights
-            'actor_state_dict': self.actor.state_dict(),
-            'critic_state_dict': self.critic.state_dict(),
-            'critic_target_state_dict': self.critic_target.state_dict(),
-            
-            # Optimizer states
-            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
-            'critic_optimizer_state_dict': self.critic_optimizer.state_dict(),
-            
-            # Important parameters
-            'gamma': self.gamma,
-            'tau': self.tau,
-            'alpha': self.alpha,
-            'reward_scale': self.reward_scale,
-            
-            # Running statistics
-            'running_reward_mean': self.running_reward_mean,
-            'running_reward_std': self.running_reward_std,
-            
-            # Training progress
-            'total_steps': self.total_steps,
-        }, path)
+        torch.save(
+            {
+                # Model architectures and weights
+                "actor_state_dict": self.actor.state_dict(),
+                "critic_state_dict": self.critic.state_dict(),
+                "critic_target_state_dict": self.critic_target.state_dict(),
+                # Optimizer states
+                "actor_optimizer_state_dict": self.actor_optimizer.state_dict(),
+                "critic_optimizer_state_dict": self.critic_optimizer.state_dict(),
+                # Important parameters
+                "gamma": self.gamma,
+                "tau": self.tau,
+                "alpha": self.alpha,
+                "reward_scale": self.reward_scale,
+                # Running statistics
+                "running_reward_mean": self.running_reward_mean,
+                "running_reward_std": self.running_reward_std,
+                # Training progress
+                "total_steps": self.total_steps,
+            },
+            path,
+        )
 
     def load(self, path: str) -> None:
         """
         Load a trained agent's parameters from a file
-        
+
         Args:
             path (str): Path to the saved agent's parameters
         """
         checkpoint = torch.load(path, map_location=self.device)
-        
+
         # Load model architectures and weights
-        self.actor.load_state_dict(checkpoint['actor_state_dict'])
-        self.critic.load_state_dict(checkpoint['critic_state_dict'])
-        self.critic_target.load_state_dict(checkpoint['critic_target_state_dict'])
-        
+        self.actor.load_state_dict(checkpoint["actor_state_dict"])
+        self.critic.load_state_dict(checkpoint["critic_state_dict"])
+        self.critic_target.load_state_dict(checkpoint["critic_target_state_dict"])
+
         # Load optimizer states
-        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
-        self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer_state_dict'])
-        
+        self.actor_optimizer.load_state_dict(checkpoint["actor_optimizer_state_dict"])
+        self.critic_optimizer.load_state_dict(checkpoint["critic_optimizer_state_dict"])
+
         # Load parameters
-        self.gamma = checkpoint['gamma']
-        self.tau = checkpoint['tau']
-        self.alpha = checkpoint['alpha']
-        self.reward_scale = checkpoint['reward_scale']
-        
+        self.gamma = checkpoint["gamma"]
+        self.tau = checkpoint["tau"]
+        self.alpha = checkpoint["alpha"]
+        self.reward_scale = checkpoint["reward_scale"]
+
         # Load running statistics
-        self.running_reward_mean = checkpoint['running_reward_mean']
-        self.running_reward_std = checkpoint['running_reward_std']
-        
+        self.running_reward_mean = checkpoint["running_reward_mean"]
+        self.running_reward_std = checkpoint["running_reward_std"]
+
         # Load training progress
-        self.total_steps = checkpoint['total_steps']
+        self.total_steps = checkpoint["total_steps"]
 
 
 class Critic(nn.Module):

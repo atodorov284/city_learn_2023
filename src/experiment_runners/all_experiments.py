@@ -10,6 +10,7 @@ from typing import List
 
 from agents.sac import SACAgent
 from agents.autoencoder import SACEncoder
+from maml_experiments import train_maml_agent
 
 # VARIABLE DEFINITIONS--------------------
 SEED = 0
@@ -23,7 +24,7 @@ DECENTRALIZED_ACTION_DIMENSION = 6
 ENCODER_HIDDEN_DIMENSION = 65
 ENCODER_OUTPUT_DIMENSION = 50  # should be smaller than the observation dimension
 
-TRAINING_EPISODES = 150
+TRAINING_EPISODES = 5
 # ---------------------------------------
 
 
@@ -38,15 +39,16 @@ def train_sac_agent(
     encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
 
     if not use_random_encoder:
-        #check whether file exists
+        # check whether file exists
         if not Path("encoder.pt").exists():
-            raise FileNotFoundError("encoder.pt not found - train the encoder before trying to load it")
+            raise FileNotFoundError(
+                "encoder.pt not found - train the encoder before trying to load it"
+            )
         encoder.load_state_dict(torch.load("encoder.pt"))
 
-    reward_list = []    # List to store rewards
-    day_rewards = []    # List to store daily rewards
+    reward_list = []  # List to store rewards
+    day_rewards = []  # List to store daily rewards
     episode_rewards = []  # List to store episode rewards
-
 
     for episode in range(episodes):
         # Reset environment and get initial observation
@@ -74,7 +76,9 @@ def train_sac_agent(
 
                 for i in range(len(agents)):
                     # agent_actions is used for the replay buffer
-                    actions[i] = agents[i].select_action(np.array(observation[i])).tolist()
+                    actions[i] = (
+                        agents[i].select_action(np.array(observation[i])).tolist()
+                    )
             else:
                 actions = [agents[0].select_action(flat_observation).tolist()]
 
@@ -125,22 +129,11 @@ def train_sac_agent(
                     len(done),
                 )
 
-            # train the agents if enough timesteps have passed
-            if agents[0].total_steps >= agents[0].exploration_timesteps:
-                for agent in agents:
-                    agent.train()
-
             observation = next_observation
 
         episode_rewards.append(episode_reward)
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
-
-        if central_agent:
-            plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
-        else:
-            plot_rewards(day_rewards, agent_type="decentralized", plot_folder="plots/")
-       
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards
@@ -155,9 +148,9 @@ def set_seed(seed: int = 0) -> None:
 
 def create_environment(
     central_agent: bool = True,
-    SEED=0,
+    SEED: int = 0,
     path: str = "data/citylearn_challenge_2023_phase_1",
-):
+) -> CityLearnEnv:
     """
     Creates the CityLearn environment.
     Args:
@@ -191,7 +184,6 @@ def create_agents(
     tau: float = 0.01,
     alpha: float = 0.05,
     batch_size: int = 256,
-    exploration_timesteps: int = 0,
 ) -> List[SACAgent]:
     """
     Creates the agents with the given specification.
@@ -205,12 +197,11 @@ def create_agents(
         tau: The target network update rate for the SAC agent.
         alpha: The temperature parameter for the SAC agent.
         batch_size: The batch size used for the SAC agent.
-        exploration_timesteps: The number of exploration timesteps for the SAC agent.
     Returns:
         Agent or a list of agents
     """
     if central_agent:
-        observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION 
+        observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION
         action_space_dim = CENTRALIZED_ACTION_DIMENSION
         building_number = 1
     else:
@@ -232,20 +223,21 @@ def create_agents(
                 tau=tau,
                 alpha=alpha,
                 action_space=env.action_space,
-                exploration_timesteps=exploration_timesteps,
             )
         )
     return agents
 
 
-def plot_rewards(
-    rewards: list[float], agent_type: str = "centralized", plot_folder: str = "plots/"
+def plot_rewards2(
+    rewards: list[list[float]],
+    agent_type: str = "centralized",
+    plot_folder: str = "plots/",
 ) -> None:
     """
     Plots the rewards for different agent types.
 
     Args:
-        rewards: List of rewards to plot
+        rewards: List of rewards to plot for each agent
         agent_type: Type of agent ("centralized", "decentralized", or "both")
     """
     valid_types = ["centralized", "decentralized", "both"]
@@ -294,44 +286,153 @@ def plot_rewards(
 
     plt.tight_layout()
     # save in directory plots
-    save_path = plot_folder + f"step_rewards_{agent_type.lower()}.png"
+    save_path = plot_folder + f"combined_step_rewards_{agent_type.lower()}.png"
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
     # plt.show()
 
+
+def plot_rewards(
+    rewards_dict: dict[str, list[float]], plot_folder: str = "plots/"
+) -> None:
+    """
+    Plots the rewards for different agent types on the same plot.
+
+    Args:
+        rewards_dict: Dictionary containing rewards for each agent type
+                     Format: {'centralized': [...], 'decentralized': [...], 'maml': [...]}
+        plot_folder: Folder to save the plots in
+    """
+    plt.figure(figsize=(12, 6))
+
+    colors = {"centralized": "blue", "decentralized": "red", "maml": "green"}
+
+    # Plot each agent type
+    for agent_type, rewards in rewards_dict.items():
+        rewards = np.array(rewards)
+        steps = range(1, len(rewards) + 1)
+
+        # Plot raw rewards with low alpha
+        # plt.plot(steps, rewards, alpha=0.2, color=colors[agent_type])
+
+        # Add rolling average
+        window_size = 24
+        # Calculate rolling mean and SEM
+        rolling_data = pd.Series(rewards).rolling(window=window_size, min_periods=1)
+        rolling_mean = rolling_data.mean()
+        rolling_sem = rolling_data.std() / np.sqrt(window_size)
+        plt.plot(
+            steps,
+            rolling_mean,
+            color=colors[agent_type],
+            linewidth=2,
+            label=f"{agent_type.capitalize()}",
+        )
+        # Add SEM bands
+        plt.fill_between(
+            steps,
+            rolling_mean - rolling_sem,
+            rolling_mean + rolling_sem,
+            color=colors[agent_type],
+            alpha=0.1,
+        )
+
+    plt.title(
+        "Agent Performance Comparison",
+        fontsize=16,
+        fontweight="bold",
+    )
+
+    plt.xlabel("Environment Steps", fontsize=14)
+    plt.ylabel("Reward", fontsize=14)
+    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.legend(fontsize=12)
+
+    plt.axhline(y=0, color="k", linestyle="--", alpha=0.3)
+
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ",")))
+
+    plt.tight_layout()
+    save_path = plot_folder + "comparison_rewards.png"
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    # plt.show()
+
+
 def evaluate_agent_performance(env: CityLearnEnv) -> None:
-    """ 
-    Evaluates the performance of the agent in an environment.   
+    """
+    Evaluates the performance of the agent in an environment.
     Uses premade functionality used in the challenge.
-    """    
-    kpis = env.evaluate() # Obtain the Key Performance Metrics
-    kpis = kpis.pivot(index='cost_function', columns='name', values='value').round(3)
-    kpis = kpis.dropna(how='all')
+    """
+    kpis = env.evaluate()  # Obtain the Key Performance Metrics
+    kpis = kpis.pivot(index="cost_function", columns="name", values="value").round(3)
+    kpis = kpis.dropna(how="all")
     kpis_reset = kpis.reset_index().rename(columns={"index": "metric"})
     print(kpis_reset)
+
 
 if __name__ == "__main__":
     # Create the environments
     centralized_env = create_environment(
         central_agent=True, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
     )
-    # decentralized_env = create_environment(central_agent=False, SEED=SEED,  path="data/citylearn_challenge_2023_phase_1")
+    decentralized_env = create_environment(
+        central_agent=False, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
+    )
 
     # Create the agents
     centralized_agent = create_agents(centralized_env, central_agent=True)
-    # decentralized_agent = create_agents(decentralized_env, central_agent=False)
-    
+    decentralized_agent = create_agents(decentralized_env, central_agent=False)
+
     # Train the agent
     rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
         train_sac_agent(
-            centralized_env, centralized_agent, episodes=TRAINING_EPISODES, central_agent=True
+            centralized_env,
+            centralized_agent,
+            episodes=TRAINING_EPISODES,
+            central_agent=True,
         )
     )
-    # rewards_decentralized, episode_rewards_decentralized, daily_rewards_decentralized = train_sac_agent(decentralized_env, decentralized_agent, episodes=TRAINING_EPISODES, central_agent=False)
+    (
+        rewards_decentralized,
+        episode_rewards_decentralized,
+        daily_rewards_decentralized,
+    ) = train_sac_agent(
+        decentralized_env,
+        decentralized_agent,
+        episodes=TRAINING_EPISODES,
+        central_agent=False,
+    )
+
+    # MAML shit
+    # Create the environment
+    maml_env = create_environment(
+        central_agent=False, SEED=SEED, path="data/citylearn_challenge_2023_phase_1"
+    )
+
+    # Create the agents
+    maml_agent = create_agents(maml_env, central_agent=False)
+
+    # Train the agents
+    rewards_maml, episode_rewards_maml, daily_rewards_maml = train_maml_agent(
+        maml_env, maml_agent, episodes=TRAINING_EPISODES
+    )
+
+    rewards_dict = {
+        "centralized": daily_rewards_centralized,
+        "decentralized": daily_rewards_decentralized,
+        "maml": daily_rewards_maml,
+    }
+
+    plot_rewards(rewards_dict, plot_folder="plots/")
 
     # Plot the rewards
-    #plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
+    # plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
     # plot_rewards(daily_rewards_decentralized, agent_type="decentralized", plot_folder="plots/")
 
     # Evaluate the agent
+    print("centralized:")
     evaluate_agent_performance(centralized_env)
-    # evaluate_agent_performance(decentralized_env)
+    print("decentralized:")
+    evaluate_agent_performance(decentralized_env)
+    print("maml:")
+    evaluate_agent_performance(maml_env)

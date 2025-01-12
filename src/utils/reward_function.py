@@ -58,7 +58,7 @@ class CustomRewardFunction(ComfortReward):
         self, observations: List[Mapping[str, Union[int, float]]]
     ) -> List[float]:
         electricity_score = RewardFunction.calculate(self, observations)
-        return list(map(lambda x: - (x * x), electricity_score))
+        return list(map(lambda x: -(x * x), electricity_score))
 
     def _comfort_score(
         self, observations: List[Mapping[str, Union[int, float]]]

@@ -34,15 +34,16 @@ def train_sac_agent(
     encoder = SACEncoder(observation_space_dim=77, output_dim=30, hidden_dim=50)
 
     if not use_random_encoder:
-        #check whether file exists
+        # check whether file exists
         if not Path("encoder.pt").exists():
-            raise FileNotFoundError("encoder.pt not found - train the encoder before trying to load it")
+            raise FileNotFoundError(
+                "encoder.pt not found - train the encoder before trying to load it"
+            )
         encoder.load_state_dict(torch.load("encoder.pt"))
 
-    reward_list = []    # List to store rewards
-    day_rewards = []    # List to store daily rewards
+    reward_list = []  # List to store rewards
+    day_rewards = []  # List to store daily rewards
     episode_rewards = []  # List to store episode rewards
-
 
     for episode in range(episodes):
         # Reset environment and get initial observation
@@ -67,7 +68,7 @@ def train_sac_agent(
             actions = [agent.select_action(flat_observation).tolist()]
 
             # print(f"actions: {actions}") # action is a list of lists (one for each agent) of actions)
-           
+
             agent.total_steps += 1
 
             # take a step
@@ -85,7 +86,6 @@ def train_sac_agent(
                 day_rewards.append(np.mean(curr_day_reward))
                 curr_day_reward = 0
 
-            
             flat_next_observation = (
                 np.concatenate(next_observation)
                 if isinstance(next_observation, list)
@@ -113,10 +113,7 @@ def train_sac_agent(
 
         print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_reward}")
 
-    
         plot_rewards(day_rewards, agent_type="centralized", plot_folder="plots/")
-
-       
 
     # print(day_rewards)
     return reward_list, episode_rewards, day_rewards
@@ -131,7 +128,7 @@ def set_seed(seed: int = 0) -> None:
 
 def create_environment(
     central_agent: bool = True,
-    SEED: int =0,
+    SEED: int = 0,
     path: str = "data/citylearn_challenge_2023_phase_1",
 ) -> CityLearnEnv:
     """
@@ -186,22 +183,22 @@ def create_agents(
         SAC agent
     """
 
-    observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION 
+    observation_space_dim = CENTRALIZED_OBSERVATION_DIMENSION
     action_space_dim = CENTRALIZED_ACTION_DIMENSION
 
     agent = SACAgent(
-                observation_space_dim=observation_space_dim,
-                action_space_dim=action_space_dim,
-                hidden_dim=hidden_dim,
-                buffer_size=buffer_size,
-                batch_size=batch_size,
-                learning_rate=learning_rate,
-                gamma=gamma,
-                tau=tau,
-                alpha=alpha,
-                action_space=env.action_space,
-                exploration_timesteps=exploration_timesteps,
-            )
+        observation_space_dim=observation_space_dim,
+        action_space_dim=action_space_dim,
+        hidden_dim=hidden_dim,
+        buffer_size=buffer_size,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        gamma=gamma,
+        tau=tau,
+        alpha=alpha,
+        action_space=env.action_space,
+        exploration_timesteps=exploration_timesteps,
+    )
     return agent
 
 
@@ -263,16 +260,18 @@ def plot_rewards(
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
     # plt.show()
 
+
 def evaluate_agent_performance(env: CityLearnEnv) -> None:
-    """ 
-    Evaluates the performance of the agent in an environment.   
+    """
+    Evaluates the performance of the agent in an environment.
     Uses premade functionality used in the challenge.
-    """    
-    kpis = env.evaluate() # Obtain the Key Performance Metrics
-    kpis = kpis.pivot(index='cost_function', columns='name', values='value').round(3)
-    kpis = kpis.dropna(how='all')
+    """
+    kpis = env.evaluate()  # Obtain the Key Performance Metrics
+    kpis = kpis.pivot(index="cost_function", columns="name", values="value").round(3)
+    kpis = kpis.dropna(how="all")
     kpis_reset = kpis.reset_index().rename(columns={"index": "metric"})
     print(kpis_reset)
+
 
 if __name__ == "__main__":
     # Create the environments
@@ -282,16 +281,21 @@ if __name__ == "__main__":
 
     # Create the agent
     centralized_agent = create_agents(centralized_env, central_agent=True)
-    
+
     # Train the agent
     rewards_centralized, episode_rewards_centralized, daily_rewards_centralized = (
         train_sac_agent(
-            centralized_env, centralized_agent, episodes=TRAINING_EPISODES, central_agent=True
+            centralized_env,
+            centralized_agent,
+            episodes=TRAINING_EPISODES,
+            central_agent=True,
         )
     )
 
     # Plot the rewards
-    plot_rewards(daily_rewards_centralized, agent_type="centralized", plot_folder="plots/")
+    plot_rewards(
+        daily_rewards_centralized, agent_type="centralized", plot_folder="plots/"
+    )
 
     # Evaluate the agent
     evaluate_agent_performance(centralized_env)
