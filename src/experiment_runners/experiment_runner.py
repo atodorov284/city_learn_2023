@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from citylearn.citylearn import CityLearnEnv
 from typing import List
+import os
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -467,7 +468,7 @@ def setup_all_agents(
             experiment_id=experiment_id
         )
 
-    with ThreadPoolExecutor(max_workers=len(agent_types)) as executor:
+    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
         future_to_agent_type = {executor.submit(setup_agent, agent): agent for agent in agent_types}
         
         for future in as_completed(future_to_agent_type):
