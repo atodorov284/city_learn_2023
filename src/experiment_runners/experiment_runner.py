@@ -6,6 +6,8 @@ import torch
 from citylearn.citylearn import CityLearnEnv
 from typing import List
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from agents.sac import SACAgent
 
 from copy import deepcopy
@@ -15,6 +17,8 @@ from utils.replay_buffer import ReplayBuffer
 from utils.plotting import plot_single_agent, plot_all_agents
 
 from typing import Tuple
+
+import uuid
 
 
 def set_seed(seed: int = 0) -> None:
@@ -443,29 +447,26 @@ def setup_single_agent(
 def setup_all_agents(
     seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}
 ) -> None:
-    _, episode_returns_centralized, daily_rewards_centralized = setup_single_agent(
-        agent_type="centralized",
-        seed=seed,
-        episodes=episodes,
-        hyperparameters_dict=hyperparameters_dict,
-    )
-    _, episode_returns_decentralized, daily_rewards_decentralized = setup_single_agent(
-        agent_type="decentralized",
-        seed=seed,
-        episodes=episodes,
-        hyperparameters_dict=hyperparameters_dict,
-    )
-    _, episode_returns_maml, daily_rewards_maml = setup_single_agent(
-        agent_type="maml",
-        seed=seed,
-        episodes=episodes,
-        hyperparameters_dict=hyperparameters_dict,
-    )
+    agent_types = ["centralized", "decentralized", "maml"]
+    results = {}
+    
+    def setup_agent(agent_type):
+        return setup_single_agent(
+            agent_type=agent_type,
+            seed=seed,
+            episodes=episodes,
+            hyperparameters_dict=hyperparameters_dict,
+        )
 
-    rewards_dict = {
-        "centralized": daily_rewards_centralized,
-        "decentralized": daily_rewards_decentralized,
-        "maml": daily_rewards_maml,
-    }
+    with ThreadPoolExecutor(max_workers=len(agent_types)) as executor:
+        future_to_agent_type = {executor.submit(setup_agent, agent): agent for agent in agent_types}
+        
+        for future in as_completed(future_to_agent_type):
+            agent_type = future_to_agent_type[future]
+            try:
+                _, episode_returns, daily_rewards = future.result()
+                results[agent_type] = daily_rewards
+            except Exception as e:
+                print(f"Error processing agent {agent_type}: {e}")
 
-    plot_all_agents(rewards_dict, plot_folder="plots/")
+    plot_all_agents(results, plot_folder="plots/")
