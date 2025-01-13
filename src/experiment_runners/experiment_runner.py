@@ -377,13 +377,13 @@ def setup_single_agent(
     training_env = create_environment(
         central_agent=centralized,
         SEED=seed,
-        path="data/citylearn_challenge_2023_phase_3_1",
+        path="data/citylearn_challenge_2023_phase_1",
     )
     
     eval_env = create_environment(
         central_agent=centralized,
         SEED=seed,
-        path="data/citylearn_challenge_2023_phase_2_local_evaluation",
+        path="data/citylearn_challenge_2023_phase_3_1",
     )
 
     num_buildings = len(training_env.buildings)

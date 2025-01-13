@@ -238,7 +238,7 @@
     }
   },
   "reward_function": {
-    "type": "citylearn.reward_function.ComfortReward",
+    "type": "utils.reward_function.CustomRewardFunction",
     "attributes": {
       "band": 1.0,
       "lower_exponent": 2.0,
@@ -332,7 +332,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
@@ -542,7 +542,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
@@ -752,7 +752,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
@@ -962,7 +962,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
@@ -1172,7 +1172,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
@@ -1382,7 +1382,7 @@
         }
       },
       "power_outage": {
-        "simulate_power_outage": true,
+        "simulate_power_outage": false,
         "stochastic_power_outage": true,
         "stochastic_power_outage_model": {
           "type": "citylearn.power_outage.ReliabilityMetricsPowerOutage",
