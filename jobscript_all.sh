@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --time=02:00:00
-#SBATCH --nodes=3
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
 #SBATCH --ntasks=3
-#SBATCH --mem=8GB
+#SBATCH --mem=16GB
 
 source .venv/bin/activate
 

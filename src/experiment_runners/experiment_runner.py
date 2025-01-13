@@ -377,7 +377,7 @@ def setup_single_agent(
     environment = create_environment(
         central_agent=centralized,
         SEED=seed,
-        path="data/citylearn_challenge_2023_phase_1",
+        path="data/citylearn_challenge_2023_phase_3_1",
     )
 
     num_buildings = len(environment.buildings)
@@ -427,11 +427,24 @@ def setup_single_agent(
     print("-" * 50)
 
     if agent_type == "centralized":
-        return train_centralized_agent(
+        train_centralized_agent(
             env=environment,
             agent=agents[0],
             episodes=episodes,
             experiment_id=experiment_id
+        )
+        
+        env = create_environment(
+            central_agent=True,
+            SEED=seed,
+            path="data/citylearn_challenge_2023_phase_3_2",
+        )
+        
+        train_centralized_agent(
+            env=environment,
+            agent=agents[0],
+            episodes=1,
+            experiment_id=f"{experiment_id}_eval"
         )
 
     elif agent_type == "decentralized":
