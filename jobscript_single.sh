@@ -6,5 +6,5 @@
 
 source .venv/bin/activate
 
-python src/main.py --agent_type centralized --episodes 2
+python src/main.py --agent_type centralized --episodes 100
 

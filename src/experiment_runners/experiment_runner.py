@@ -431,7 +431,7 @@ def setup_single_agent(
     print(f"Batch size: {batch_size}")
     print(f"K-shots: {k_shots} (only used for MAML)")
     print("-" * 50)
-
+    
     if agent_type == "centralized":
         train_centralized_agent(
             env=training_env,
@@ -457,7 +457,7 @@ def setup_single_agent(
         train_decentralized_agent(
             env=eval_env,
             agents=agents,
-            episodes=episodes,
+            episodes=1,
             experiment_id=f"{experiment_id}_eval"
         )
 
@@ -474,7 +474,7 @@ def setup_single_agent(
         train_maml_agent(
             env=eval_env,
             base_agent=agents[0],
-            episodes=episodes,
+            episodes=1,
             building_count=num_buildings,
             k_shots=k_shots,
             experiment_id=experiment_id
