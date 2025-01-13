@@ -377,7 +377,7 @@ def setup_single_agent(
     training_env = create_environment(
         central_agent=centralized,
         SEED=seed,
-        path="data/citylearn_challenge_2023_phase_1",
+        path="data/citylearn_challenge_2023_phase_3_1",
     )
     
     eval_env = create_environment(
@@ -431,8 +431,6 @@ def setup_single_agent(
     print(f"Batch size: {batch_size}")
     print(f"K-shots: {k_shots} (only used for MAML)")
     print("-" * 50)
-    
-    aa
 
     if agent_type == "centralized":
         train_centralized_agent(
