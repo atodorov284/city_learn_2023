@@ -374,15 +374,21 @@ def setup_single_agent(
 
     centralized = True if agent_type == "centralized" else False
 
-    environment = create_environment(
+    training_env = create_environment(
         central_agent=centralized,
         SEED=seed,
-        path="data/citylearn_challenge_2023_phase_3_1",
+        path="data/citylearn_challenge_2023_phase_1",
+    )
+    
+    eval_env = create_environment(
+        central_agent=centralized,
+        SEED=seed,
+        path="data/citylearn_challenge_2023_phase_2_local_evaluation",
     )
 
-    num_buildings = len(environment.buildings)
-    observation_space_dim = environment.observation_space[0].shape[0]
-    action_space_dim = environment.action_space[0].shape[0]
+    num_buildings = len(training_env.buildings)
+    observation_space_dim = training_env.observation_space[0].shape[0]
+    action_space_dim = training_env.action_space[0].shape[0]
 
     hidden_dim = hyperparameters_dict.get("hidden_dim", 256)
     buffer_size = hyperparameters_dict.get("buffer_size", 100000)
@@ -394,7 +400,7 @@ def setup_single_agent(
     k_shots = hyperparameters_dict.get("k_shots", 3)
 
     agents = create_agents(
-        env=environment,
+        env=training_env,
         central_agent=centralized,
         hidden_dim=hidden_dim,
         buffer_size=buffer_size,
@@ -403,7 +409,7 @@ def setup_single_agent(
         tau=tau,
         alpha=alpha,
         batch_size=batch_size,
-        action_space=environment.action_space,
+        action_space=training_env.action_space,
         observation_space_dim=observation_space_dim,
         action_space_dim=action_space_dim,
         num_buildings=num_buildings,
@@ -425,39 +431,50 @@ def setup_single_agent(
     print(f"Batch size: {batch_size}")
     print(f"K-shots: {k_shots} (only used for MAML)")
     print("-" * 50)
+    
+    aa
 
     if agent_type == "centralized":
         train_centralized_agent(
-            env=environment,
+            env=training_env,
             agent=agents[0],
             episodes=episodes,
             experiment_id=experiment_id
         )
         
-        env = create_environment(
-            central_agent=True,
-            SEED=seed,
-            path="data/citylearn_challenge_2023_phase_3_2",
-        )
-        
         train_centralized_agent(
-            env=environment,
+            env=eval_env,
             agent=agents[0],
             episodes=1,
             experiment_id=f"{experiment_id}_eval"
         )
 
     elif agent_type == "decentralized":
-        return train_decentralized_agent(
-            env=environment,
+        train_decentralized_agent(
+            env=training_env,
             agents=agents,
             episodes=episodes,
             experiment_id=experiment_id
         )
+        train_decentralized_agent(
+            env=eval_env,
+            agents=agents,
+            episodes=episodes,
+            experiment_id=f"{experiment_id}_eval"
+        )
 
     elif agent_type == "maml":
-        return train_maml_agent(
-            env=environment,
+        train_maml_agent(
+            env=training_env,
+            base_agent=agents[0],
+            episodes=episodes,
+            building_count=num_buildings,
+            k_shots=k_shots,
+            experiment_id=experiment_id
+        )
+        
+        train_maml_agent(
+            env=eval_env,
             base_agent=agents[0],
             episodes=episodes,
             building_count=num_buildings,

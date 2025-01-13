@@ -238,7 +238,7 @@
     }
   },
   "reward_function": {
-    "type": "reward_function.CustomRewardFunction"
+    "type": "utils.reward_function.CustomRewardFunction"
   },
   "buildings": {
     "Building_1": {
