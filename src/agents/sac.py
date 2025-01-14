@@ -53,7 +53,10 @@ class SACAgent(Agent):
         self.replay_buffer = ReplayBuffer(buffer_size)
 
         # Entropy temperature (can be made learnable)
-        self.alpha = alpha
+        self.target_entropy = -action_space_dim  # -dim(A) is a good heuristic
+        self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+        self.alpha = self.log_alpha.exp()
+        self.alpha_optimizer = optim.Adam([self.log_alpha], lr=learning_rate)
 
         # Tracking
         self.total_steps = 0
@@ -137,6 +140,13 @@ class SACAgent(Agent):
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
 
+        # Alpha loss
+        alpha_loss = -(self.log_alpha * (log_probs + self.target_entropy).detach()).mean()
+        
+        # Optimize alpha
+        self.alpha_optimizer.zero_grad()
+        alpha_loss.backward()
+
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)
 
@@ -215,6 +225,14 @@ class SACAgent(Agent):
 
         if update:
             self.actor_optimizer.step()
+
+        # Add alpha optimization
+        alpha_loss = -(self.log_alpha * (log_probs + self.target_entropy).detach()).mean()
+        self.alpha_optimizer.zero_grad()
+        alpha_loss.backward()
+        if update:
+            self.alpha_optimizer.step()
+            self.alpha = self.log_alpha.exp()
 
         # Soft update of target network
         self._soft_update(self.critic, self.critic_target)
