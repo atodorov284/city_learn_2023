@@ -1,17 +1,6 @@
----
-title: CityLearn 2023 Challenge
-emoji: 🏛️
-colorFrom: blue
-colorTo: green
-sdk: python
-sdk_version: 3.9
-app_file: main.py
-pinned: false
----
-
 # CityLearn 2023 Challenge
 
-<a target="_blank" href="https://citylearn.ai">
+<a target="_blank" href="https://citylearn.net">
     <img src="https://img.shields.io/badge/CityLearn-Challenge-004080?logo=data:image/png;base64,..." />
 </a>
 
