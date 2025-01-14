@@ -311,6 +311,9 @@ def train_maml_agent(
                             if param.grad is None:
                                 param.grad = torch.zeros_like(param)
                             param.grad += copied_param.grad / building_count
+                            
+                torch.nn.utils.clip_grad_norm_(base_agent.actor.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(base_agent.critic.parameters(), max_norm=1.0)
 
                 actor_optimizer.step()
                 critic_optimizer.step()
@@ -434,14 +437,14 @@ def setup_single_agent(
     print("-" * 50)
     
     if agent_type == "centralized":
-        train_centralized_agent(
+        _, _, daily_rewards_training = train_centralized_agent(
             env=training_env,
             agent=agents[0],
             episodes=episodes,
             experiment_id=experiment_id
         )
         
-        train_centralized_agent(
+        _, _, daily_rewards_eval = train_centralized_agent(
             env=eval_env,
             agent=agents[0],
             episodes=1,
@@ -449,13 +452,13 @@ def setup_single_agent(
         )
 
     elif agent_type == "decentralized":
-        train_decentralized_agent(
+        _, _, daily_rewards_training= train_decentralized_agent(
             env=training_env,
             agents=agents,
             episodes=episodes,
             experiment_id=experiment_id
         )
-        train_decentralized_agent(
+        _, _, daily_rewards_eval = train_decentralized_agent(
             env=eval_env,
             agents=agents,
             episodes=1,
@@ -463,7 +466,7 @@ def setup_single_agent(
         )
 
     elif agent_type == "maml":
-        train_maml_agent(
+        _, _, daily_rewards_training = train_maml_agent(
             env=training_env,
             base_agent=agents[0],
             episodes=episodes,
@@ -472,7 +475,7 @@ def setup_single_agent(
             experiment_id=experiment_id
         )
         
-        train_maml_agent(
+        _, _, daily_rewards_eval = train_maml_agent(
             env=eval_env,
             base_agent=agents[0],
             episodes=1,
@@ -481,13 +484,16 @@ def setup_single_agent(
             experiment_id=f"{experiment_id}_eval",
             evaluation_mode=True
         )
+        
+    return daily_rewards_training, daily_rewards_eval
 
 
 def setup_all_agents(
     seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}, experiment_id: str = None
 ) -> None:
     agent_types = ["centralized", "decentralized", "maml"]
-    results = {}
+    training_results = {}
+    eval_results = {}
     
     def setup_agent(agent_type):
         return setup_single_agent(
@@ -504,9 +510,11 @@ def setup_all_agents(
         for future in as_completed(future_to_agent_type):
             agent_type = future_to_agent_type[future]
             try:
-                _, episode_returns, daily_rewards = future.result()
-                results[agent_type] = daily_rewards
+                daily_rewards_train, daily_rewards_eval = future.result()
+                training_results[agent_type] = daily_rewards_train
+                eval_results[agent_type] = daily_rewards_eval
             except Exception as e:
                 print(f"Error processing agent {agent_type}: {e}")
 
-    plot_all_agents(results, plot_folder="plots/", experiment_id=experiment_id)
+    plot_all_agents(training_results, plot_folder="plots/", experiment_id=f"{experiment_id}_train")
+    plot_all_agents(eval_results, plot_folder="plots/", experiment_id=f"{experiment_id}_eval")
