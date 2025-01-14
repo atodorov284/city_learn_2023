@@ -259,7 +259,8 @@ def train_maml_agent(
     building_count: int = 1,
     learning_rate: float = 3e-4,
     k_shots: int = 3,
-    experiment_id: str = None
+    experiment_id: str = None,
+    evaluation_mode = False
 ) -> Tuple[List[float], List[float], List[float]]:
     """Train the MAML agent.
     Args:
@@ -290,7 +291,7 @@ def train_maml_agent(
         current_daily_reward = 0
 
         while not env.done:
-            if base_agent.total_steps % k_shots == 0:
+            if base_agent.total_steps % k_shots == 0 and not evaluation_mode:
                 actor_optimizer.zero_grad()
                 critic_optimizer.zero_grad()
 
@@ -477,7 +478,8 @@ def setup_single_agent(
             episodes=1,
             building_count=num_buildings,
             k_shots=k_shots,
-            experiment_id=experiment_id
+            experiment_id=f"{experiment_id}_eval",
+            evaluation_mode=True
         )
 
 
