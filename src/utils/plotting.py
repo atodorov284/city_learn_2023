@@ -8,7 +8,7 @@ def plot_single_agent(
     agent_type: str = "centralized",
     plot_folder: str = "plots/",
     window_size: int = 15,
-    experiment_id: str = None
+    experiment_id: str = None,
 ) -> None:
     """
     Plots the rewards for different agent types.
@@ -67,7 +67,9 @@ def plot_single_agent(
 
 
 def plot_all_agents(
-    rewards_dict: dict[str, list[float]], plot_folder: str = "plots/", experiment_id: str = None
+    rewards_dict: dict[str, list[float]],
+    plot_folder: str = "plots/",
+    experiment_id: str = None,
 ) -> None:
     """
     Plots the rewards for different agent types on the same plot.
