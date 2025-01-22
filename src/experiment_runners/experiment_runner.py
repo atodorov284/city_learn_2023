@@ -6,6 +6,8 @@ import torch
 from citylearn.citylearn import CityLearnEnv
 from typing import List
 
+import time
+
 from agents.wrappers.centralized import CentralizedSACAgent
 from agents.wrappers.decentralized import DecentralizedSACAgent
 from agents.wrappers.maml import MAMLSACAgent
@@ -60,6 +62,8 @@ def train_citylearn_agent(
     eval_mode: bool = False,
     agent_type: str = "centralized",
 ) -> List[float]:
+    start_time = time.time()
+
     agent.reset()
 
     day_rewards = []
@@ -84,10 +88,7 @@ def train_citylearn_agent(
 
             observation = next_observation
 
-        if eval_mode:
-            print(f"Evaluation started. {episode+1}/{episodes}.")
-        else:
-            print(f"Trained for month {episode+1}/{episodes}.")
+        print(f"Month: {episode+1}/{episodes} in eval_mode: {eval_mode}.")
 
         plot_single_agent(
             day_rewards,
@@ -96,6 +97,7 @@ def train_citylearn_agent(
             experiment_id=experiment_id,
         )
 
+    print(f"Wall Time for {agent_type} in eval_mode: {eval_mode}: {time.time() - start_time:.2f} seconds")
     return day_rewards
 
 
@@ -219,6 +221,7 @@ def setup_single_agent(
         episodes=episodes,
         experiment_id=f"{experiment_id}_eval",
         agent_type=agent_type,
+        eval_mode=True,
     )
 
     return daily_rewards_training, daily_rewards_eval
