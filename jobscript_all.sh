@@ -6,5 +6,5 @@
 
 source .venv/bin/activate
 
-python src/main.py --agent_type all
+python src/main.py --agent_type all --episodes 60
 

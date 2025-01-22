@@ -39,9 +39,9 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
         )
 
     def select_action(self, observation: list) -> list:
-        actions = [0 for _ in range(len(self.agents))]
+        actions = [0 for _ in range(self.num_buildings)]
 
-        for i in range(len(self.num_buildings)):
+        for i in range(self.num_buildings):
             actions[i] = self.agents[i].select_action(np.array(observation[i])).tolist()
 
         for agent in self.agents:
@@ -56,7 +56,7 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
     def add_to_buffer(
         self, observation, actions, reward, next_observation, done
     ) -> None:
-        for i in range(len(self.agents)):
+        for i in range(self.num_buildings):
             self.agents[i].replay_buffer.push(
                 observation[i],
                 actions[i],

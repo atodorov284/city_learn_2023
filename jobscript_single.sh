@@ -6,6 +6,6 @@
 
 source .venv/bin/activate
 
-python src/main.py --agent_type maml --episodes 2
+python src/main.py --agent_type decentralized --episodes 2
 
 

@@ -88,7 +88,7 @@ def train_citylearn_agent(
 
             observation = next_observation
 
-        print(f"Month: {episode+1}/{episodes} in eval_mode: {eval_mode}.")
+        print(f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}.")
 
         plot_single_agent(
             day_rewards,
@@ -97,7 +97,7 @@ def train_citylearn_agent(
             experiment_id=experiment_id,
         )
 
-    print(f"Wall Time for {agent_type} in eval_mode: {eval_mode}: {time.time() - start_time:.2f} seconds")
+    print(f"Wall Time for {agent_type}: {time.time() - start_time:.2f} seconds, Eval_mode: {eval_mode}")
     return day_rewards
 
 
@@ -218,7 +218,7 @@ def setup_single_agent(
     daily_rewards_eval = train_citylearn_agent(
         agent=agent,
         env=eval_env,
-        episodes=episodes,
+        episodes=1, # Only one episode for evaluation
         experiment_id=f"{experiment_id}_eval",
         agent_type=agent_type,
         eval_mode=True,
