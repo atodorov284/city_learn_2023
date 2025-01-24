@@ -8,6 +8,8 @@ from copy import deepcopy
 
 from utils.replay_buffer import ReplayBuffer
 
+from typing import List
+
 
 import torch
 
@@ -30,6 +32,9 @@ class MAMLSACAgent(CityLearnWrapperAgent):
         num_buildings: int = 0,
         k_shots: int = 3,
     ) -> None:
+        """
+        Initializes the MAML SACAgent. This agent follows the CL/DE paradigm.
+        """
         super().__init__(
             env,
             central_agent,
@@ -62,11 +67,21 @@ class MAMLSACAgent(CityLearnWrapperAgent):
         self._initialize_custom_buffers(buffer_size)
 
     def _copy_agents(self) -> None:
+        """Copies the agent and creates a list of copied agents, each associated with a building."""
         self.copied_agents = [
             deepcopy(self.base_agent) for _ in range(self.num_buildings)
         ]
 
     def _outer_loop(self) -> None:
+        """
+        Performs the outer loop update for the MAML algorithm.
+
+        This function aggregates gradients from multiple copied agents,
+        normalizes them, and applies the updates to the base agent's
+        actor and critic networks. Gradients are accumulated over all
+        buildings, and gradient clipping is applied to stabilize training.
+        """
+
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
 
@@ -99,7 +114,10 @@ class MAMLSACAgent(CityLearnWrapperAgent):
 
             self._copy_agents()
 
-    def select_action(self, observation):
+    def select_action(self, observation: List[List[float]]) -> List[List[float]]:
+        """
+        Selects an action for each building in the MAMLSACAgent.
+        """
         actions = [0 for _ in range(self.num_buildings)]
 
         for i in range(self.num_buildings):
@@ -112,12 +130,18 @@ class MAMLSACAgent(CityLearnWrapperAgent):
         return actions
 
     @property
-    def total_steps(self):
+    def total_steps(self) -> int:
+        """
+        Returns the total number of steps of the agent.
+        """
         return self.base_agent.total_steps
 
     def add_to_buffer(
-        self, observation, actions, reward, next_observation, done
+        self, observation: List[List[float]], actions: List[List[float]], reward: List[float], next_observation: List[List[float]], done: int
     ) -> None:
+        """
+        Adds a transition to the replay buffer of each building agent.
+        """
         for i, building_buffer in enumerate(self.building_buffers):
             building_buffer.push(
                 observation[i],
@@ -128,11 +152,18 @@ class MAMLSACAgent(CityLearnWrapperAgent):
             )
 
     def _initialize_custom_buffers(self, capacity: int) -> None:
+        """
+        Initializes a list of replay buffers, one for each building.
+        """
+        
         self.building_buffers = [
             ReplayBuffer(capacity=capacity) for _ in range(self.num_buildings)
         ]
 
-    def train(self, eval_mode=False) -> None:
+    def train(self, eval_mode: bool=False) -> None:
+        """
+        Trains the MAML SAC agent.
+        """
         if self.base_agent.total_steps % self.k_shots == 0 and not eval_mode:
             self._outer_loop()
 

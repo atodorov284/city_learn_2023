@@ -83,64 +83,6 @@ class SACAgent(Agent):
 
         return action.detach().cpu().numpy()[0]
 
-    def compute_loss(self, states, actions, rewards, next_states, done):
-        """
-        Train the maml xd
-        """
-        scaled_rewards = rewards * self.reward_scale
-        print(rewards)
-
-        # Convert to tensors
-        states = torch.FloatTensor(states).to(self.device)
-        actions = torch.FloatTensor(actions).to(self.device)
-        rewards = torch.FloatTensor(scaled_rewards).to(self.device)
-        next_states = torch.FloatTensor(next_states).to(self.device)
-        done = torch.FloatTensor(done).to(self.device)
-
-        with torch.no_grad():
-            next_actions, next_log_probs = self.actor.sample_action(next_states)
-
-            # Target Q-values
-            q1_next, q2_next = self.critic_target(next_states, next_actions)
-
-            q1_next = q1_next.squeeze()
-            q2_next = q2_next.squeeze()
-
-            min_q_next = torch.min(q1_next, q2_next)
-
-            # Compute target Q-values with entropy
-            target_q = rewards + (1 - done) * self.gamma * (
-                min_q_next - self.alpha * next_log_probs.squeeze()
-            )
-
-        # Current Q-values
-        # Go from tensor of size [1,1,9] to [1,9]
-        q1_current, q2_current = self.critic(states, actions.squeeze(1))
-
-        q1_loss = F.mse_loss(q1_current.squeeze(), target_q.squeeze())
-        q2_loss = F.mse_loss(q2_current.squeeze(), target_q.squeeze())
-        critic_loss = q1_loss + q2_loss
-
-        # Optimize critic
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-
-        sampled_actions, log_probs = self.actor.sample_action(states)
-        q1_pi, q2_pi = self.critic(states, sampled_actions)
-        min_q_pi = torch.min(q1_pi, q2_pi)
-
-        # Actor loss with entropy
-        actor_loss = (self.alpha * log_probs - min_q_pi).mean()
-
-        # Optimize actor
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-
-        # Soft update of target network
-        self._soft_update(self.critic, self.critic_target)
-
-        return actor_loss.item(), critic_loss.item()
-
     def train(self, update=True, custom_buffer=None) -> None:
         """
         Train the SAC agent using a batch from replay buffer

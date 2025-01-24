@@ -3,6 +3,8 @@ from agents.base_models.sac import SACAgent
 
 from citylearn.citylearn import CityLearnEnv
 
+from typing import List
+
 
 class CityLearnWrapperAgent(ABC):
     def __init__(
@@ -38,22 +40,40 @@ class CityLearnWrapperAgent(ABC):
         self.create_agents()
 
     @abstractmethod
-    def select_action(self, observation):
+    def select_action(self, observation: List[List[float]]) -> List[List[float]]:
+        """
+        Selects an action for each entity in the CityLearn environment.
+        """
+
         pass
 
     @abstractmethod
-    def add_to_buffer(self, state, action, reward, next_state, done):
+    def add_to_buffer(self, state: List[List[float]], action: List[List[float]], reward: List[float], next_state: List[List[float]], done: int):
+        """
+        Adds a transition to the replay buffer of each building agent.
+        """
         pass
 
     @abstractmethod
-    def train(self, eval_mode=False):
+    def train(self, eval_mode: bool=False):
+        """
+        Trains the agent using the specified mode.
+        """
         pass
 
     def reset(self) -> None:
+        """
+        Resets the agents' total steps to 0.
+        """
         for agent in self.agents:
             agent.total_steps = 0
 
     def create_agents(self) -> None:
+        """
+        Creates the agents, either a single central agent or a list of agents
+        one for each building.
+        """
+
         if self.central_agent:
             self.num_agents = 1
         else:

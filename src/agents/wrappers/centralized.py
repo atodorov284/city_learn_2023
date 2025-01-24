@@ -4,6 +4,7 @@ from citylearn.citylearn import CityLearnEnv
 
 import numpy as np
 
+from typing import List
 
 class CentralizedSACAgent(CityLearnWrapperAgent):
     def __init__(
@@ -22,6 +23,9 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
         action_space_dim: int = 0,
         num_buildings: int = 0,
     ) -> None:
+        """
+        Initializes the CentralizedSACAgent. This agent follows the CL/CE paradigm.
+        """
         super().__init__(
             env,
             central_agent,
@@ -39,7 +43,16 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
         )
         self.agent = self.agents[0]
 
-    def select_action(self, observation):
+    def select_action(self, observation: List[List[float]]) -> List[List[float]]:
+        """Select a centralized action using the base agent
+
+        Args:
+            observation: a list of lists of floats representing the observations of all buildings
+
+        Returns:
+            a list of lists of floats representing the actions of all buildings
+        """
+
         flat_observation = (
             np.concatenate(observation)
             if isinstance(observation, list)
@@ -50,12 +63,16 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
         return actions
 
     @property
-    def total_steps(self):
+    def total_steps(self) -> int:
+        """Returns the total number of steps of the base agent."""
         return self.agent.total_steps
 
     def add_to_buffer(
-        self, observation, actions, reward, next_observation, done
+        self, observation: List[List[float]], actions: List[List[float]], reward: List[float], next_observation: List[List[float]], done: int
     ) -> None:
+        """
+        Add a centralized agent transition to the replay buffer
+        """
         flat_observation = (
             np.concatenate(observation)
             if isinstance(observation, list)
@@ -76,6 +93,6 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
             len(done),
         )
 
-    def train(self, eval_mode=False) -> None:
+    def train(self, eval_mode: bool=False) -> None:
         # Centralized doesn't care about eval_mode, this is only for MAML but required so the abstraction works
         self.agent.train()

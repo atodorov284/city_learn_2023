@@ -4,6 +4,7 @@ from citylearn.citylearn import CityLearnEnv
 
 import numpy as np
 
+from typing import List
 
 class DecentralizedSACAgent(CityLearnWrapperAgent):
     def __init__(
@@ -22,6 +23,9 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
         action_space_dim: int = 0,
         num_buildings: int = 0,
     ) -> None:
+        """
+        Initializes the DecentralizedSACAgent. This agent follows the DL/DE paradigm.
+        """
         super().__init__(
             env,
             central_agent,
@@ -38,7 +42,20 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
             num_buildings,
         )
 
-    def select_action(self, observation: list) -> list:
+    def select_action(self, observation: List[List[float]]) -> List[List[float]]:
+        """
+        Selects an action for each building in the DecentralizedSACAgent.
+
+        Parameters
+        ----------
+        observation: List[List[float]]
+            The current observation for each building.
+
+        Returns
+        -------
+        List[List[float]]
+            A list of actions (one for each building) to be taken in the environment.
+        """
         actions = [0 for _ in range(self.num_buildings)]
 
         for i in range(self.num_buildings):
@@ -50,12 +67,18 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
         return actions
 
     @property
-    def total_steps(self):
+    def total_steps(self) -> int:
+        """
+        Returns the total number of steps of the first agent in the list of agents.
+        """
         return self.agents[0].total_steps
 
     def add_to_buffer(
         self, observation, actions, reward, next_observation, done
     ) -> None:
+        """
+        Adds a decentralized agent transition to the replay buffer.
+        """
         for i in range(self.num_buildings):
             self.agents[i].replay_buffer.push(
                 observation[i],
@@ -65,6 +88,9 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
                 len(done),
             )
 
-    def train(self, eval_mode=False) -> None:
+    def train(self, eval_mode: bool=False) -> None:
+        """
+        Trains all decentralized agents.
+        """
         for agent in self.agents:
             agent.train()

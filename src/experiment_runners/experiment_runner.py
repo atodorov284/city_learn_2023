@@ -67,6 +67,7 @@ def train_citylearn_agent(
     agent.reset()
 
     day_rewards = []
+    total_episode_reward = 0
     for episode in range(episodes):
         observation = env.reset()
         current_daily_reward = 0
@@ -81,6 +82,8 @@ def train_citylearn_agent(
             if agent.total_steps % 24 == 0:
                 day_rewards.append(np.mean(current_daily_reward))
                 current_daily_reward = 0
+            
+            total_episode_reward += np.sum(reward)
 
             agent.add_to_buffer(observation, actions, reward, next_observation, done)
 
