@@ -4,40 +4,48 @@ from matplotlib import pyplot as plt
 
 
 def plot_single_agent(
-    rewards: list[float],
+    rewards: dict[str, list[float]],
     agent_type: str = "centralized",
     plot_folder: str = "plots/",
     window_size: int = 15,
     experiment_id: str = None,
 ) -> None:
     """
-    Plots the rewards for different agent types.
+    Plots the rewards for a single agent type on the same plot.
 
     Args:
-        rewards: List of rewards to plot
-        agent_type: Type of agent ("centralized", "decentralized", "maml")
+        rewards: Dictionary containing rewards for each agent type
+                 Format: {'centralized': [...], 'decentralized': [...], 'maml': [...]}
+        agent_type: Agent type to plot
+        plot_folder: Folder to save the plot in
+        window_size: Size of the rolling window
+        experiment_id: Experiment ID
     """
-    valid_types = ["centralized", "decentralized", "maml"]
-    if agent_type.lower() not in valid_types:
-        raise ValueError(f"agent_type must be one of {valid_types}")
-
-    rewards = np.array(rewards)
-    steps = range(1, len(rewards) + 1)
-
+    mean_reward = np.array(rewards["mean_reward"])
+    sem_reward = np.array(rewards["sem_reward"])
+    steps = range(1, len(mean_reward) + 1)
+    
+    rolling_mean = pd.Series(mean_reward).rolling(window_size, min_periods=1).mean()
+    
     plt.figure(figsize=(12, 6))
 
     # Plot raw rewards
-    plt.plot(steps, rewards, alpha=0.3, color="blue", label="Raw Rewards")
+    plt.plot(steps, mean_reward, alpha=0.3, color="blue", label="Raw Rewards")
 
-    # Add rolling average
-    window_size = 15
-    rolling_mean = pd.Series(rewards).rolling(window=window_size, min_periods=1).mean()
     plt.plot(
         steps,
         rolling_mean,
         color="red",
         linewidth=2,
         label=f"{window_size}-step Moving Average",
+    )
+    
+    plt.fill_between(
+            steps,
+            rolling_mean - sem_reward,
+            rolling_mean + sem_reward,
+            color="blue",
+            alpha=0.1,
     )
 
     title_prefix = {
@@ -85,18 +93,16 @@ def plot_all_agents(
 
     # Plot each agent type
     for agent_type, rewards in rewards_dict.items():
-        rewards = np.array(rewards)
-        steps = range(1, len(rewards) + 1)
+        mean_reward = np.array(rewards["mean_reward"])
+        sem_rewards = np.array(rewards["sem_reward"])
+        steps = range(1, len(mean_reward) + 1)
 
         # Plot raw rewards with low alpha
         # plt.plot(steps, rewards, alpha=0.2, color=colors[agent_type])
-
-        # Add rolling average
+        
         window_size = 24
-        # Calculate rolling mean and SEM
-        rolling_data = pd.Series(rewards).rolling(window=window_size, min_periods=1)
-        rolling_mean = rolling_data.mean()
-        rolling_sem = rolling_data.std() / np.sqrt(window_size)
+        rolling_mean = pd.Series(mean_reward).rolling(window_size, min_periods=1).mean()
+
         plt.plot(
             steps,
             rolling_mean,
@@ -107,8 +113,8 @@ def plot_all_agents(
         # Add SEM bands
         plt.fill_between(
             steps,
-            rolling_mean - rolling_sem,
-            rolling_mean + rolling_sem,
+            rolling_mean - sem_rewards,
+            rolling_mean + sem_rewards,
             color=colors[agent_type],
             alpha=0.1,
         )
