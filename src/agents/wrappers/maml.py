@@ -137,7 +137,12 @@ class MAMLSACAgent(CityLearnWrapperAgent):
         return self.base_agent.total_steps
 
     def add_to_buffer(
-        self, observation: List[List[float]], actions: List[List[float]], reward: List[float], next_observation: List[List[float]], done: int
+        self,
+        observation: List[List[float]],
+        actions: List[List[float]],
+        reward: List[float],
+        next_observation: List[List[float]],
+        done: int,
     ) -> None:
         """
         Adds a transition to the replay buffer of each building agent.
@@ -155,12 +160,12 @@ class MAMLSACAgent(CityLearnWrapperAgent):
         """
         Initializes a list of replay buffers, one for each building.
         """
-        
+
         self.building_buffers = [
             ReplayBuffer(capacity=capacity) for _ in range(self.num_buildings)
         ]
 
-    def train(self, eval_mode: bool=False) -> None:
+    def train(self, eval_mode: bool = False) -> None:
         """
         Trains the MAML SAC agent.
         """

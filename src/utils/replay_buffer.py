@@ -17,7 +17,12 @@ class ReplayBuffer:
         self._memory = []
 
     def push(
-        self, state: List[List[float]], action: List[List[float]], reward: List[float], next_state: List[List[float]], done: int
+        self,
+        state: List[List[float]],
+        action: List[List[float]],
+        reward: List[float],
+        next_state: List[List[float]],
+        done: int,
     ) -> None:
         """Push a transition to the replay buffer"""
 

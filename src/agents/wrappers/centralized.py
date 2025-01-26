@@ -6,6 +6,7 @@ import numpy as np
 
 from typing import List
 
+
 class CentralizedSACAgent(CityLearnWrapperAgent):
     def __init__(
         self,
@@ -68,7 +69,12 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
         return self.agent.total_steps
 
     def add_to_buffer(
-        self, observation: List[List[float]], actions: List[List[float]], reward: List[float], next_observation: List[List[float]], done: int
+        self,
+        observation: List[List[float]],
+        actions: List[List[float]],
+        reward: List[float],
+        next_observation: List[List[float]],
+        done: int,
     ) -> None:
         """
         Add a centralized agent transition to the replay buffer
@@ -93,6 +99,7 @@ class CentralizedSACAgent(CityLearnWrapperAgent):
             len(done),
         )
 
-    def train(self, eval_mode: bool=False) -> None:
+    def train(self, eval_mode: bool = False) -> None:
+        """Trains the centralized agent."""
         # Centralized doesn't care about eval_mode, this is only for MAML but required so the abstraction works
         self.agent.train()

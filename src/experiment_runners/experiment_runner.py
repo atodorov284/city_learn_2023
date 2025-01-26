@@ -62,25 +62,18 @@ def train_citylearn_agent(
     eval_mode: bool = False,
     agent_type: str = "centralized",
 ) -> List[float]:
+    """Train a CityLearn agent using a wrapped CityLearn agent for gym functionality."""
     start_time = time.time()
 
     agent.reset()
 
-    day_rewards = {
-        "total_reward": [],
-        "mean_reward": [],
-        "sem_reward": []
-    }
-    
-    episode_rewards = {
-        "total_reward": [],
-        "mean_reward": [],
-        "sem_reward": []
-    }
-    
+    day_rewards = {"total_reward": [], "mean_reward": [], "sem_reward": []}
+
+    episode_rewards = {"total_reward": [], "mean_reward": [], "sem_reward": []}
+
     for episode in range(episodes):
         observation = env.reset()
-        
+
         raw_rewards_daily = []
         raw_rewards_episode = []
 
@@ -88,7 +81,7 @@ def train_citylearn_agent(
             actions = agent.select_action(observation)
 
             next_observation, reward, info, done = env.step(actions)
-            
+
             # Calculate the step reward
             step_reward = np.sum(reward)
 
@@ -98,7 +91,9 @@ def train_citylearn_agent(
             if agent.total_steps % 24 == 0:
                 day_rewards["total_reward"].append(np.sum(raw_rewards_daily))
                 day_rewards["mean_reward"].append(np.mean(raw_rewards_daily))
-                day_rewards["sem_reward"].append(np.std(raw_rewards_daily) / np.sqrt(len(raw_rewards_daily)))
+                day_rewards["sem_reward"].append(
+                    np.std(raw_rewards_daily) / np.sqrt(len(raw_rewards_daily))
+                )
 
             agent.add_to_buffer(observation, actions, reward, next_observation, done)
 
@@ -108,9 +103,13 @@ def train_citylearn_agent(
 
         episode_rewards["total_reward"].append(np.sum(raw_rewards_episode))
         episode_rewards["mean_reward"].append(np.mean(raw_rewards_episode))
-        episode_rewards["sem_reward"].append(np.std(raw_rewards_episode) / np.sqrt(len(raw_rewards_episode)))
-        
-        print(f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}.")
+        episode_rewards["sem_reward"].append(
+            np.std(raw_rewards_episode) / np.sqrt(len(raw_rewards_episode))
+        )
+
+        print(
+            f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}."
+        )
 
         plot_single_agent(
             day_rewards,
@@ -118,16 +117,17 @@ def train_citylearn_agent(
             plot_folder="plots/",
             experiment_id=f"{experiment_id}_daily",
         )
-        
+
         plot_single_agent(
             episode_rewards,
             agent_type=agent_type,
             plot_folder="plots/",
             experiment_id=f"{experiment_id}_episode",
         )
-        
 
-    print(f"Wall Time for {agent_type}: {time.time() - start_time:.2f} seconds, Eval_mode: {eval_mode}")
+    print(
+        f"Wall Time for {agent_type}: {time.time() - start_time:.2f} seconds, Eval_mode: {eval_mode}"
+    )
     return day_rewards, episode_rewards
 
 
@@ -138,6 +138,20 @@ def setup_single_agent(
     episodes: int = 100,
     experiment_id: str = None,
 ) -> List[float]:
+    """
+    Setup and train a single agent.
+
+    Args:
+        agent_type (str, optional): _description_. Defaults to "centralized".
+        seed (int, optional): _description_. Defaults to 0.
+        hyperparameters_dict (dict, optional): _description_. Defaults to {}.
+        episodes (int, optional): _description_. Defaults to 100.
+        experiment_id (str, optional): _description_. Defaults to None.
+
+    Returns:
+        List[float]: _description_
+    """
+
     set_seed(seed)
 
     centralized = True if agent_type == "centralized" else False
@@ -166,7 +180,7 @@ def setup_single_agent(
     alpha = hyperparameters_dict.get("alpha", 0.05)
     batch_size = hyperparameters_dict.get("batch_size", 256)
     k_shots = hyperparameters_dict.get("k_shots", 3)
-    
+
     print("-" * 50)
     print(f"Experiment ID: {experiment_id}")
     print(f"Episodes (months): {episodes}")
@@ -248,13 +262,18 @@ def setup_single_agent(
     daily_rewards_eval, episode_rewards_eval = train_citylearn_agent(
         agent=agent,
         env=eval_env,
-        episodes=1, # Only one episode for evaluation
+        episodes=1,  # Only one episode for evaluation
         experiment_id=f"{experiment_id}_eval",
         agent_type=agent_type,
         eval_mode=True,
     )
 
-    return daily_rewards_training, daily_rewards_eval, episode_rewards_training, episode_rewards_eval
+    return (
+        daily_rewards_training,
+        daily_rewards_eval,
+        episode_rewards_training,
+        episode_rewards_eval,
+    )
 
 
 def setup_all_agents(
@@ -263,13 +282,19 @@ def setup_all_agents(
     hyperparameters_dict: dict = {},
     experiment_id: str = None,
 ) -> None:
+    """
+    Setup and train all agents in parallel using ThreadPoolExecutor.
+    """
     agent_types = ["centralized", "decentralized", "maml"]
     training_results_daily = {}
     training_results_episode = {}
     eval_results_daily = {}
     eval_results_episode = {}
 
-    def setup_agent(agent_type):
+    def setup_agent(agent_type: str) -> tuple:
+        """
+        Setup a single agent of the specified type. Inner method for parallelization.
+        """
         return setup_single_agent(
             agent_type=agent_type,
             seed=seed,
@@ -286,7 +311,12 @@ def setup_all_agents(
         for future in as_completed(future_to_agent_type):
             agent_type = future_to_agent_type[future]
             try:
-                daily_rewards_train, daily_rewards_eval, episode_rewards_train, episode_rewards_eval = future.result()
+                (
+                    daily_rewards_train,
+                    daily_rewards_eval,
+                    episode_rewards_train,
+                    episode_rewards_eval,
+                ) = future.result()
                 training_results_daily[agent_type] = daily_rewards_train
                 eval_results_daily[agent_type] = daily_rewards_eval
                 training_results_episode[agent_type] = episode_rewards_train
@@ -295,15 +325,21 @@ def setup_all_agents(
                 print(f"Error processing agent {agent_type}: {e}")
 
     plot_all_agents(
-        training_results_daily, plot_folder="plots/", experiment_id=f"{experiment_id}_train_daily"
+        training_results_daily,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_train_daily",
     )
-    
+
     plot_all_agents(
-        training_results_episode, plot_folder="plots/", experiment_id=f"{experiment_id}_train_episode"
+        training_results_episode,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_train_episode",
     )
-    
+
     plot_all_agents(
-        eval_results_daily, plot_folder="plots/", experiment_id=f"{experiment_id}_eval_daily"
+        eval_results_daily,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_eval_daily",
     )
-    
+
     print(f"Evaluation results episode: {eval_results_episode}")

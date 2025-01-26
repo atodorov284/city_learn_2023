@@ -24,9 +24,9 @@ def plot_single_agent(
     mean_reward = np.array(rewards["mean_reward"])
     sem_reward = np.array(rewards["sem_reward"])
     steps = range(1, len(mean_reward) + 1)
-    
+
     rolling_mean = pd.Series(mean_reward).rolling(window_size, min_periods=1).mean()
-    
+
     plt.figure(figsize=(12, 6))
 
     # Plot raw rewards
@@ -39,13 +39,13 @@ def plot_single_agent(
         linewidth=2,
         label=f"{window_size}-step Moving Average",
     )
-    
+
     plt.fill_between(
-            steps,
-            rolling_mean - sem_reward,
-            rolling_mean + sem_reward,
-            color="blue",
-            alpha=0.1,
+        steps,
+        rolling_mean - sem_reward,
+        rolling_mean + sem_reward,
+        color="blue",
+        alpha=0.1,
     )
 
     title_prefix = {
@@ -78,7 +78,7 @@ def plot_all_agents(
     rewards_dict: dict[str, list[float]],
     plot_folder: str = "plots/",
     experiment_id: str = None,
-    window_size: int = 24
+    window_size: int = 24,
 ) -> None:
     """
     Plots the rewards for different agent types on the same plot.
@@ -100,7 +100,7 @@ def plot_all_agents(
 
         # Plot raw rewards with low alpha
         # plt.plot(steps, rewards, alpha=0.2, color=colors[agent_type])
-        
+
         rolling_mean = pd.Series(mean_reward).rolling(window_size, min_periods=1).mean()
 
         plt.plot(

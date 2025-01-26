@@ -6,6 +6,7 @@ import numpy as np
 
 from typing import List
 
+
 class DecentralizedSACAgent(CityLearnWrapperAgent):
     def __init__(
         self,
@@ -74,7 +75,12 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
         return self.agents[0].total_steps
 
     def add_to_buffer(
-        self, observation, actions, reward, next_observation, done
+        self,
+        observation: List[List[float]],
+        actions: List[List[float]],
+        reward: List[float],
+        next_observation: List[List[float]],
+        done: int,
     ) -> None:
         """
         Adds a decentralized agent transition to the replay buffer.
@@ -88,7 +94,7 @@ class DecentralizedSACAgent(CityLearnWrapperAgent):
                 len(done),
             )
 
-    def train(self, eval_mode: bool=False) -> None:
+    def train(self, eval_mode: bool = False) -> None:
         """
         Trains all decentralized agents.
         """

@@ -23,7 +23,7 @@ class SACAgent(Agent):
         tau: float = 0.05,
         buffer_size: int = 100000,
         batch_size: int = 32,
-        action_space=None,
+        action_space: list = None,
     ) -> None:
         """Initialize the Soft-Actor Critic agent"""
         super().__init__(observation_space_dim, action_space_dim)
@@ -83,7 +83,7 @@ class SACAgent(Agent):
 
         return action.detach().cpu().numpy()[0]
 
-    def train(self, update=True, custom_buffer=None) -> None:
+    def train(self, update: bool = True, custom_buffer: ReplayBuffer = None) -> None:
         """
         Train the SAC agent using a batch from replay buffer
         """
@@ -295,7 +295,7 @@ class Actor(nn.Module):
         observation_space_dim: int,
         hidden_dim: int,
         action_space_dim: int,
-        action_space,
+        action_space: list = None,
     ) -> None:
         """Initialize the actor network"""
         super(Actor, self).__init__()

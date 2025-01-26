@@ -23,6 +23,24 @@ class CityLearnWrapperAgent(ABC):
         action_space_dim: int = 0,
         num_buildings: int = 0,
     ) -> None:
+        """
+        Initializes the CityLearnWrapperAgent. Provides functions to interact with the CityLearn environment.
+
+        Args:
+            env (CityLearnEnv): _description_
+            central_agent (bool, optional): _description_. Defaults to False.
+            hidden_dim (int, optional): _description_. Defaults to 256.
+            buffer_size (int, optional): _description_. Defaults to 100000.
+            learning_rate (float, optional): _description_. Defaults to 3e-4.
+            gamma (float, optional): _description_. Defaults to 0.99.
+            tau (float, optional): _description_. Defaults to 0.01.
+            alpha (float, optional): _description_. Defaults to 0.05.
+            batch_size (int, optional): _description_. Defaults to 256.
+            action_space (list, optional): _description_. Defaults to None.
+            observation_space_dim (int, optional): _description_. Defaults to 0.
+            action_space_dim (int, optional): _description_. Defaults to 0.
+            num_buildings (int, optional): _description_. Defaults to 0.
+        """
         self.env = env
         self.central_agent = central_agent
         self.hidden_dim = hidden_dim
@@ -48,14 +66,21 @@ class CityLearnWrapperAgent(ABC):
         pass
 
     @abstractmethod
-    def add_to_buffer(self, state: List[List[float]], action: List[List[float]], reward: List[float], next_state: List[List[float]], done: int):
+    def add_to_buffer(
+        self,
+        state: List[List[float]],
+        action: List[List[float]],
+        reward: List[float],
+        next_state: List[List[float]],
+        done: int,
+    ) -> None:
         """
         Adds a transition to the replay buffer of each building agent.
         """
         pass
 
     @abstractmethod
-    def train(self, eval_mode: bool=False):
+    def train(self, eval_mode: bool = False) -> None:
         """
         Trains the agent using the specified mode.
         """
