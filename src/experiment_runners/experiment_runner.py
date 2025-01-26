@@ -5,21 +5,23 @@ import numpy as np
 import torch
 from citylearn.citylearn import CityLearnEnv
 from typing import List
-import os
+
+import time
+
+from agents.wrappers.centralized import CentralizedSACAgent
+from agents.wrappers.decentralized import DecentralizedSACAgent
+from agents.wrappers.maml import MAMLSACAgent
+from agents.wrappers.citylearn_wrapper import CityLearnWrapperAgent
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from agents.sac import SACAgent
-
-from copy import deepcopy
-
-from utils.replay_buffer import ReplayBuffer
 
 from utils.plotting import plot_single_agent, plot_all_agents
 
-from typing import Tuple
 
-import uuid
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 def set_seed(seed: int = 0) -> None:
@@ -52,319 +54,81 @@ def create_environment(
     return env
 
 
-def create_agents(
+def train_citylearn_agent(
     env: CityLearnEnv,
-    central_agent: bool = False,
-    hidden_dim: int = 256,
-    buffer_size: int = 100000,
-    learning_rate: float = 3e-4,
-    gamma: float = 0.99,
-    tau: float = 0.01,
-    alpha: float = 0.05,
-    batch_size: int = 256,
-    action_space: list = None,
-    observation_space_dim: int = 0,
-    action_space_dim: int = 0,
-    num_buildings: int = 0,
-) -> List[SACAgent]:
-    """
-    Creates the agents with the given specification.
-    Args:
-        env: The CityLearn environment.
-        central_agent: Whether to create a central agent.
-        hidden_dim: The hidden dimension of the network for the SAC agent.
-        buffer_size: The replay buffer size.
-        learning_rate: The learning rate for the SAC agent.
-        gamma: The discount factor for the SAC agent.
-        tau: The target network update rate for the SAC agent.
-        alpha: The temperature parameter for the SAC agent.
-        batch_size: The batch size used for the SAC agent.
-    Returns:
-        Agent or a list of agents
-    """
-
-    agents = []
-    if central_agent:
-        num_agents = 1
-    else:
-        num_agents = num_buildings
-
-    for _ in range(num_agents):
-        agents.append(
-            SACAgent(
-                observation_space_dim=observation_space_dim,
-                action_space_dim=action_space_dim,
-                hidden_dim=hidden_dim,
-                buffer_size=buffer_size,
-                learning_rate=learning_rate,
-                gamma=gamma,
-                tau=tau,
-                alpha=alpha,
-                batch_size=batch_size,
-                action_space=action_space,
-            )
-        )
-    return agents
-
-
-def train_centralized_agent(
-    env: CityLearnEnv,
-    agent: SACAgent,
+    agent: CityLearnWrapperAgent,
     episodes: int = 100,
-    experiment_id: str = None
-) -> Tuple[List[float], List[float], List[float]]:
-    """
-    Train the central agent.
-    Args:
-        env: The CityLearn environment.
-        agent: The central agent.
-        episodes: The number of episodes to train the agent.
-    Returns:
-        The list of rewards
-    """
+    experiment_id: str = None,
+    eval_mode: bool = False,
+    agent_type: str = "centralized",
+) -> List[float]:
+    """Train a CityLearn agent using a wrapped CityLearn agent for gym functionality."""
+    start_time = time.time()
 
-    reward_list = []
-    day_rewards = []
-    episode_returns = []
+    agent.reset()
+
+    day_rewards = {"total_reward": [], "mean_reward": [], "sem_reward": []}
+
+    episode_rewards = {"total_reward": [], "mean_reward": [], "sem_reward": []}
 
     for episode in range(episodes):
         observation = env.reset()
 
-        episode_return = 0
-        current_daily_reward = 0
+        raw_rewards_daily = []
+        raw_rewards_episode = []
 
         while not env.done:
-            flat_observation = (
-                np.concatenate(observation)
-                if isinstance(observation, list)
-                else observation
-            )
-
-            # The CityLearn environment expects a list of actions even for the centralized agent
-            actions = [agent.select_action(flat_observation).tolist()]
-
-            agent.total_steps += 1
+            actions = agent.select_action(observation)
 
             next_observation, reward, info, done = env.step(actions)
 
-            reward_list.append(np.sum(reward))
-            current_daily_reward += np.sum(reward)
+            # Calculate the step reward
+            step_reward = np.sum(reward)
+
+            raw_rewards_episode.append(step_reward)
+            raw_rewards_daily.append(step_reward)
 
             if agent.total_steps % 24 == 0:
-                day_rewards.append(np.mean(current_daily_reward))
-                current_daily_reward = 0
-
-            flat_next_observation = (
-                np.concatenate(next_observation)
-                if isinstance(next_observation, list)
-                else next_observation
-            )
-
-            episode_return += np.sum(reward)
-
-            agent.replay_buffer.push(
-                flat_observation,
-                actions,
-                np.sum(reward),
-                flat_next_observation,
-                len(done),
-            )
-            
-            agent.train()
-
-            observation = next_observation
-
-        episode_returns.append(episode_return)
-
-        print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
-
-        plot_single_agent(day_rewards, agent_type="centralized", plot_folder="plots/", experiment_id=experiment_id)
-
-    return reward_list, episode_returns, day_rewards
-
-
-def train_decentralized_agent(
-    env: CityLearnEnv,
-    agents: list[SACAgent],
-    episodes: int = 100,
-    experiment_id: str = None
-) -> Tuple[List[float], List[float], List[float]]:
-    """
-    Train the central agent.
-    Args:
-        env: The CityLearn environment.
-        agents: A list of agents.
-        episodes: The number of episodes to train the agents.
-    Returns:
-        The list of rewards
-    """
-
-    reward_list = []
-    day_rewards = []
-    episode_returns = []
-
-    for episode in range(episodes):
-        observation = env.reset()
-
-        episode_return = 0
-        current_daily_reward = 0
-
-        while not env.done:
-            actions = [0 for _ in range(len(agents))]
-
-            for i in range(len(agents)):
-                actions[i] = agents[i].select_action(np.array(observation[i])).tolist()
-
-            for agent in agents:
-                agent.total_steps += 1
-
-            next_observation, reward, info, done = env.step(actions)
-
-            reward_list.append(reward)
-            current_daily_reward += np.sum(reward)
-            
-            if agents[0].total_steps % 24 == 0:
-                day_rewards.append(np.mean(current_daily_reward))
-                current_daily_reward = 0
-            
-            episode_return += np.sum(reward)
-
-            for i in range(len(agents)):
-                agents[i].replay_buffer.push(
-                    observation[i],
-                    actions[i],
-                    reward[i],
-                    next_observation[i],
-                    len(done),
+                day_rewards["total_reward"].append(np.sum(raw_rewards_daily))
+                day_rewards["mean_reward"].append(np.mean(raw_rewards_daily))
+                day_rewards["sem_reward"].append(
+                    np.std(raw_rewards_daily) / np.sqrt(len(raw_rewards_daily))
                 )
-                
-            for agent in agents:
-                agent.train()
+
+            agent.add_to_buffer(observation, actions, reward, next_observation, done)
+
+            agent.train(eval_mode=eval_mode)
 
             observation = next_observation
 
-        episode_returns.append(episode_return)
+        episode_rewards["total_reward"].append(np.sum(raw_rewards_episode))
+        episode_rewards["mean_reward"].append(np.mean(raw_rewards_episode))
+        episode_rewards["sem_reward"].append(
+            np.std(raw_rewards_episode) / np.sqrt(len(raw_rewards_episode))
+        )
 
-        print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
+        print(
+            f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}."
+        )
 
-        plot_single_agent(day_rewards, agent_type="decentralized", plot_folder="plots/", experiment_id=experiment_id)
+        plot_single_agent(
+            day_rewards,
+            agent_type=agent_type,
+            plot_folder="plots/",
+            experiment_id=f"{experiment_id}_daily",
+        )
 
-    return reward_list, episode_returns, day_rewards
+        plot_single_agent(
+            episode_rewards,
+            agent_type=agent_type,
+            plot_folder="plots/",
+            experiment_id=f"{experiment_id}_episode",
+        )
 
-
-def train_maml_agent(
-    env: CityLearnEnv,
-    base_agent: list[SACAgent],
-    episodes: int = 100,
-    building_count: int = 1,
-    learning_rate: float = 3e-4,
-    k_shots: int = 3,
-    experiment_id: str = None,
-    evaluation_mode = False
-) -> Tuple[List[float], List[float], List[float]]:
-    """Train the MAML agent.
-    Args:
-        env: The CityLearn environment.
-        agents: A list of agents.
-        episodes: The number of episodes to train the agents.
-    Returns:
-        The list of rewards
-    """
-    reward_list = []
-    day_rewards = []
-    episode_returns = []
-
-    actor_optimizer = torch.optim.Adam(base_agent.actor.parameters(), lr=learning_rate)
-
-    critic_optimizer = torch.optim.Adam(
-        base_agent.critic.parameters(), lr=learning_rate
+    print(
+        f"Wall Time for {agent_type}: {time.time() - start_time:.2f} seconds, Eval_mode: {eval_mode}"
     )
-
-    copied_agents = [deepcopy(base_agent) for _ in range(building_count)]
-
-    building_buffers = [ReplayBuffer(capacity=100000) for _ in range(building_count)]
-
-    for episode in range(episodes):
-        observation = env.reset()
-
-        episode_return = 0
-        current_daily_reward = 0
-
-        while not env.done:
-            if base_agent.total_steps % k_shots == 0 and not evaluation_mode:
-                actor_optimizer.zero_grad()
-                critic_optimizer.zero_grad()
-
-                for copied_agent in copied_agents:
-                    for param, copied_param in zip(
-                        base_agent.actor.parameters(), copied_agent.actor.parameters()
-                    ):
-                        if copied_param.grad is not None:
-                            if param.grad is None:
-                                param.grad = torch.zeros_like(param)
-                            param.grad += copied_param.grad / building_count
-
-                    for param, copied_param in zip(
-                        base_agent.critic.parameters(), copied_agent.critic.parameters()
-                    ):
-                        if copied_param.grad is not None:
-                            if param.grad is None:
-                                param.grad = torch.zeros_like(param)
-                            param.grad += copied_param.grad / building_count
-                            
-                torch.nn.utils.clip_grad_norm_(base_agent.actor.parameters(), max_norm=1.0)
-                torch.nn.utils.clip_grad_norm_(base_agent.critic.parameters(), max_norm=1.0)
-
-                actor_optimizer.step()
-                critic_optimizer.step()
-
-                copied_agents = [deepcopy(base_agent) for _ in range(building_count)]
-
-            actions = [0 for _ in range(building_count)]
-            for i in range(building_count):
-                actions[i] = (
-                    copied_agents[i].select_action(np.array(observation[i])).tolist()
-                )
-
-            base_agent.total_steps += 1
-
-            next_observation, reward, info, done = env.step(actions)
-
-            reward_list.append(reward)
-            current_daily_reward += np.sum(reward)
-
-            if base_agent.total_steps % 24 == 0:
-                day_rewards.append(np.mean(current_daily_reward))
-                current_daily_reward = 0
-
-            episode_return += np.sum(reward)
-
-            for building_buffer in building_buffers:
-                building_buffer.push(
-                    observation[i],
-                    actions[i],
-                    reward[i],
-                    next_observation[i],
-                    len(done),
-                )
-
-            total_agent_loss = 0
-            total_critic_loss = 0
-            for i in range(building_count):
-                agent_loss, critic_loss = copied_agents[i].train(
-                    update=True, custom_buffer=building_buffers[i]
-                )
-                total_agent_loss += agent_loss
-                total_critic_loss += critic_loss
-
-            observation = next_observation
-
-        episode_returns.append(episode_return)
-        print(f"Episode {episode+1}/{episodes}, Total Reward: {episode_return}")
-
-        plot_single_agent(day_rewards, agent_type="maml", plot_folder="plots/", experiment_id=experiment_id)
-
-    return reward_list, episode_returns, day_rewards
+    return day_rewards, episode_rewards
 
 
 def setup_single_agent(
@@ -372,8 +136,22 @@ def setup_single_agent(
     seed: int = 0,
     hyperparameters_dict: dict = {},
     episodes: int = 100,
-    experiment_id: str = None
+    experiment_id: str = None,
 ) -> List[float]:
+    """
+    Setup and train a single agent.
+
+    Args:
+        agent_type (str, optional): _description_. Defaults to "centralized".
+        seed (int, optional): _description_. Defaults to 0.
+        hyperparameters_dict (dict, optional): _description_. Defaults to {}.
+        episodes (int, optional): _description_. Defaults to 100.
+        experiment_id (str, optional): _description_. Defaults to None.
+
+    Returns:
+        List[float]: _description_
+    """
+
     set_seed(seed)
 
     centralized = True if agent_type == "centralized" else False
@@ -383,7 +161,7 @@ def setup_single_agent(
         SEED=seed,
         path="data/citylearn_challenge_2023_phase_1",
     )
-    
+
     eval_env = create_environment(
         central_agent=centralized,
         SEED=seed,
@@ -403,28 +181,13 @@ def setup_single_agent(
     batch_size = hyperparameters_dict.get("batch_size", 256)
     k_shots = hyperparameters_dict.get("k_shots", 3)
 
-    agents = create_agents(
-        env=training_env,
-        central_agent=centralized,
-        hidden_dim=hidden_dim,
-        buffer_size=buffer_size,
-        learning_rate=learning_rate,
-        gamma=gamma,
-        tau=tau,
-        alpha=alpha,
-        batch_size=batch_size,
-        action_space=training_env.action_space,
-        observation_space_dim=observation_space_dim,
-        action_space_dim=action_space_dim,
-        num_buildings=num_buildings,
-    )
     print("-" * 50)
     print(f"Experiment ID: {experiment_id}")
+    print(f"Episodes (months): {episodes}")
     print(f"Agent type: {agent_type}")
     print(f"Number of buildings: {num_buildings}")
     print(f"Observation space dimension: {observation_space_dim}")
     print(f"Action space dimension: {action_space_dim}")
-    print(f"Number of agents: {len(agents)}")
     print("Agent hyperparameters:")
     print(f"Hidden dimension: {hidden_dim}")
     print(f"Buffer size: {buffer_size}")
@@ -435,86 +198,148 @@ def setup_single_agent(
     print(f"Batch size: {batch_size}")
     print(f"K-shots: {k_shots} (only used for MAML)")
     print("-" * 50)
-    
+
     if agent_type == "centralized":
-        _, _, daily_rewards_training = train_centralized_agent(
+        agent = CentralizedSACAgent(
             env=training_env,
-            agent=agents[0],
-            episodes=episodes,
-            experiment_id=experiment_id
-        )
-        
-        _, _, daily_rewards_eval = train_centralized_agent(
-            env=eval_env,
-            agent=agents[0],
-            episodes=1,
-            experiment_id=f"{experiment_id}_eval"
+            central_agent=centralized,
+            hidden_dim=hidden_dim,
+            buffer_size=buffer_size,
+            learning_rate=learning_rate,
+            gamma=gamma,
+            tau=tau,
+            alpha=alpha,
+            batch_size=batch_size,
+            action_space=training_env.action_space,
+            observation_space_dim=observation_space_dim,
+            action_space_dim=action_space_dim,
+            num_buildings=num_buildings,
         )
 
     elif agent_type == "decentralized":
-        _, _, daily_rewards_training= train_decentralized_agent(
+        agent = DecentralizedSACAgent(
             env=training_env,
-            agents=agents,
-            episodes=episodes,
-            experiment_id=experiment_id
-        )
-        _, _, daily_rewards_eval = train_decentralized_agent(
-            env=eval_env,
-            agents=agents,
-            episodes=1,
-            experiment_id=f"{experiment_id}_eval"
+            central_agent=centralized,
+            hidden_dim=hidden_dim,
+            buffer_size=buffer_size,
+            learning_rate=learning_rate,
+            gamma=gamma,
+            tau=tau,
+            alpha=alpha,
+            batch_size=batch_size,
+            action_space=training_env.action_space,
+            observation_space_dim=observation_space_dim,
+            action_space_dim=action_space_dim,
+            num_buildings=num_buildings,
         )
 
     elif agent_type == "maml":
-        _, _, daily_rewards_training = train_maml_agent(
+        agent = MAMLSACAgent(
             env=training_env,
-            base_agent=agents[0],
-            episodes=episodes,
-            building_count=num_buildings,
+            central_agent=centralized,
+            hidden_dim=hidden_dim,
+            buffer_size=buffer_size,
+            learning_rate=learning_rate,
+            gamma=gamma,
+            tau=tau,
+            alpha=alpha,
+            batch_size=batch_size,
+            action_space=training_env.action_space,
+            observation_space_dim=observation_space_dim,
+            action_space_dim=action_space_dim,
+            num_buildings=num_buildings,
             k_shots=k_shots,
-            experiment_id=experiment_id
         )
-        
-        _, _, daily_rewards_eval = train_maml_agent(
-            env=eval_env,
-            base_agent=agents[0],
-            episodes=1,
-            building_count=num_buildings,
-            k_shots=k_shots,
-            experiment_id=f"{experiment_id}_eval",
-            evaluation_mode=True
-        )
-        
-    return daily_rewards_training, daily_rewards_eval
+
+    daily_rewards_training, episode_rewards_training = train_citylearn_agent(
+        agent=agent,
+        env=training_env,
+        episodes=episodes,
+        experiment_id=f"{experiment_id}_train",
+        agent_type=agent_type,
+    )
+
+    daily_rewards_eval, episode_rewards_eval = train_citylearn_agent(
+        agent=agent,
+        env=eval_env,
+        episodes=1,  # Only one episode for evaluation
+        experiment_id=f"{experiment_id}_eval",
+        agent_type=agent_type,
+        eval_mode=True,
+    )
+
+    return (
+        daily_rewards_training,
+        daily_rewards_eval,
+        episode_rewards_training,
+        episode_rewards_eval,
+    )
 
 
 def setup_all_agents(
-    seed: int = 0, episodes: int = 100, hyperparameters_dict: dict = {}, experiment_id: str = None
+    seed: int = 0,
+    episodes: int = 100,
+    hyperparameters_dict: dict = {},
+    experiment_id: str = None,
 ) -> None:
+    """
+    Setup and train all agents in parallel using ThreadPoolExecutor.
+    """
     agent_types = ["centralized", "decentralized", "maml"]
-    training_results = {}
-    eval_results = {}
-    
-    def setup_agent(agent_type):
+    training_results_daily = {}
+    training_results_episode = {}
+    eval_results_daily = {}
+    eval_results_episode = {}
+
+    def setup_agent(agent_type: str) -> tuple:
+        """
+        Setup a single agent of the specified type. Inner method for parallelization.
+        """
         return setup_single_agent(
             agent_type=agent_type,
             seed=seed,
             episodes=episodes,
             hyperparameters_dict=hyperparameters_dict,
-            experiment_id=experiment_id
+            experiment_id=experiment_id,
         )
 
     with ThreadPoolExecutor(max_workers=len(agent_types)) as executor:
-        future_to_agent_type = {executor.submit(setup_agent, agent): agent for agent in agent_types}
-        
+        future_to_agent_type = {
+            executor.submit(setup_agent, agent): agent for agent in agent_types
+        }
+
         for future in as_completed(future_to_agent_type):
             agent_type = future_to_agent_type[future]
             try:
-                daily_rewards_train, daily_rewards_eval = future.result()
-                training_results[agent_type] = daily_rewards_train
-                eval_results[agent_type] = daily_rewards_eval
+                (
+                    daily_rewards_train,
+                    daily_rewards_eval,
+                    episode_rewards_train,
+                    episode_rewards_eval,
+                ) = future.result()
+                training_results_daily[agent_type] = daily_rewards_train
+                eval_results_daily[agent_type] = daily_rewards_eval
+                training_results_episode[agent_type] = episode_rewards_train
+                eval_results_episode[agent_type] = episode_rewards_eval
             except Exception as e:
                 print(f"Error processing agent {agent_type}: {e}")
 
-    plot_all_agents(training_results, plot_folder="plots/", experiment_id=f"{experiment_id}_train")
-    plot_all_agents(eval_results, plot_folder="plots/", experiment_id=f"{experiment_id}_eval")
+    plot_all_agents(
+        training_results_daily,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_train_daily",
+    )
+
+    plot_all_agents(
+        training_results_episode,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_train_episode",
+    )
+
+    plot_all_agents(
+        eval_results_daily,
+        plot_folder="plots/",
+        experiment_id=f"{experiment_id}_eval_daily",
+    )
+
+    print(f"Evaluation results episode: {eval_results_episode}")
