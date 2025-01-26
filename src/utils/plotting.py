@@ -78,6 +78,7 @@ def plot_all_agents(
     rewards_dict: dict[str, list[float]],
     plot_folder: str = "plots/",
     experiment_id: str = None,
+    window_size: int = 24
 ) -> None:
     """
     Plots the rewards for different agent types on the same plot.
@@ -100,7 +101,6 @@ def plot_all_agents(
         # Plot raw rewards with low alpha
         # plt.plot(steps, rewards, alpha=0.2, color=colors[agent_type])
         
-        window_size = 24
         rolling_mean = pd.Series(mean_reward).rolling(window_size, min_periods=1).mean()
 
         plt.plot(

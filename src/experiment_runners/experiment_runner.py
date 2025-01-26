@@ -98,7 +98,7 @@ def train_citylearn_agent(
             if agent.total_steps % 24 == 0:
                 day_rewards["total_reward"].append(np.sum(raw_rewards_daily))
                 day_rewards["mean_reward"].append(np.mean(raw_rewards_daily))
-                day_rewards["sem_reward"].append(np.std(raw_rewards_daily))
+                day_rewards["sem_reward"].append(np.std(raw_rewards_daily) / np.sqrt(len(raw_rewards_daily)))
 
             agent.add_to_buffer(observation, actions, reward, next_observation, done)
 
@@ -108,7 +108,7 @@ def train_citylearn_agent(
 
         episode_rewards["total_reward"].append(np.sum(raw_rewards_episode))
         episode_rewards["mean_reward"].append(np.mean(raw_rewards_episode))
-        episode_rewards["sem_reward"].append(np.std(raw_rewards_episode))
+        episode_rewards["sem_reward"].append(np.std(raw_rewards_episode) / np.sqrt(len(raw_rewards_episode)))
         
         print(f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}.")
 
