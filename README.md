@@ -59,12 +59,15 @@ Example use:
 ```bash
 python ./src/main.py --seed 0 --agent_type maml --tau  0.02 
 ```
+
+Each execution of code creates a unique experiment ID, which allows you to track the progress of training without overwriting plots.
+
 ---
 ### 👁️ Visualization 
 
 Running the previous script will produce two plots in the **\plots** folder, following a format:
 
-***step_rewards_agent-type_experiment-id***: a training curve of the agent with daily rewards on 1 month data with 3 buildings, and
+***step_rewards_agent-type_experiment-id_train***: a training curve of the agent with daily rewards on 1 month data with 3 buildings, and
 ***step_rewards_agent-type_experiment-id_eval***: an evaluation curve of the agent with daily rewards on 3 month data with unseen 3 buildings.
 
 ---
@@ -73,15 +76,16 @@ Running the previous script will produce two plots in the **\plots** folder, fol
 
 ```plaintext
 .
-├── data                   <- Simulated data and results
-├── notebooks              <- Jupyter notebooks for analysis
-├── old                    <- Legacy files, usable if needed to train without the parser
-├── plots                  <- Folder with all the plots
+├── data                   <- Simulated data
+├── plots                  <- Folder with plots from last experiments
 ├── src                    <- Source code for the project
-│   ├── agents             <- Implementation of MARL agents
 │   ├── experiment_runners <- Methods to train the agents, called in the parser
-│   └── utils              <- Helper functions
-├── jobscripts.sh          <- Scripts used to run the code in Habrok, University of Groningen HPC cluster
+│   └── utils              <- Helper functions (replay buffer, custom reward)
+│   └── agents             <- Implementation of MARL agents
+│       ├── base_models    <- Base agents used in this study (SAC, random agent)
+│       └── wrappers       <- Wrappers for the CityLearn environment to provide unified functionality
+├── jobscript_all.sh       <- Script to run parallelized experiments on Habrok
+├── jobscript_all.sh       <- Script to run a single experiment on Habrok
 ├── README.md              <- Project documentation
 └── uv.lock                <- Dependency list
 ```
