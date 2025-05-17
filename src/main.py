@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--tau", type=float, default=0.01)
     parser.add_argument("--alpha", type=float, default=0.05)
     parser.add_argument("--k_shots", type=int, default=3)
+    parser.add_argument("--num_runs", type=int, default=3)
 
     args = parser.parse_args()
 
@@ -38,6 +39,7 @@ def main() -> None:
         "alpha": args.alpha,
         "batch_size": args.batch_size,
         "k_shots": args.k_shots,
+        "num_runs": args.num_runs,
     }
 
     if args.agent_type == "all":

@@ -94,6 +94,8 @@ def train_citylearn_agent(
                 day_rewards["sem_reward"].append(
                     np.std(raw_rewards_daily) / np.sqrt(len(raw_rewards_daily))
                 )
+                raw_rewards_daily = []
+                
 
             agent.add_to_buffer(observation, actions, reward, next_observation, done)
 
@@ -111,19 +113,19 @@ def train_citylearn_agent(
             f"Agent: {agent_type}, Episode: {episode+1}/{episodes}, Eval_mode: {eval_mode}."
         )
 
-        plot_single_agent(
-            day_rewards,
-            agent_type=agent_type,
-            plot_folder="plots/",
-            experiment_id=f"{experiment_id}_daily",
-        )
+        # plot_single_agent(
+        #     day_rewards,
+        #     agent_type=agent_type,
+        #     plot_folder="plots/",
+        #     experiment_id=f"{experiment_id}_daily",
+        # )
 
-        plot_single_agent(
-            episode_rewards,
-            agent_type=agent_type,
-            plot_folder="plots/",
-            experiment_id=f"{experiment_id}_episode",
-        )
+        # plot_single_agent(
+        #     episode_rewards,
+        #     agent_type=agent_type,
+        #     plot_folder="plots/",
+        #     experiment_id=f"{experiment_id}_episode",
+        # )
 
     print(
         f"Wall Time for {agent_type}: {time.time() - start_time:.2f} seconds, Eval_mode: {eval_mode}"
@@ -180,6 +182,7 @@ def setup_single_agent(
     alpha = hyperparameters_dict.get("alpha", 0.05)
     batch_size = hyperparameters_dict.get("batch_size", 256)
     k_shots = hyperparameters_dict.get("k_shots", 3)
+    num_runs = hyperparameters_dict.get("num_runs", 3)
 
     print("-" * 50)
     print(f"Experiment ID: {experiment_id}")
@@ -251,28 +254,39 @@ def setup_single_agent(
             k_shots=k_shots,
         )
 
-    daily_rewards_training, episode_rewards_training = train_citylearn_agent(
-        agent=agent,
-        env=training_env,
-        episodes=episodes,
-        experiment_id=f"{experiment_id}_train",
-        agent_type=agent_type,
-    )
+    training_runs_daily = []
+    training_runs_episode = []
+    eval_runs_daily = []
+    eval_runs_episode = []
 
-    daily_rewards_eval, episode_rewards_eval = train_citylearn_agent(
-        agent=agent,
-        env=eval_env,
-        episodes=1,  # Only one episode for evaluation
-        experiment_id=f"{experiment_id}_eval",
-        agent_type=agent_type,
-        eval_mode=True,
-    )
+    for _ in range(num_runs):
+        daily_rewards_training, episode_rewards_training = train_citylearn_agent(
+            agent=agent,
+            env=training_env,
+            episodes=episodes,
+            experiment_id=f"{experiment_id}_train",
+            agent_type=agent_type,
+        )
+        daily_rewards_eval, episode_rewards_eval = train_citylearn_agent(
+            agent=agent,
+            env=eval_env,
+            episodes=1,  # Only one episode for evaluation
+            experiment_id=f"{experiment_id}_eval",
+            agent_type=agent_type,
+            eval_mode=True,
+        )
+
+        training_runs_daily.append((daily_rewards_training["mean_reward"]))
+        training_runs_episode.append((episode_rewards_training["mean_reward"]))
+        
+        eval_runs_daily.append((daily_rewards_eval["mean_reward"]))
+        eval_runs_episode.append((episode_rewards_eval["mean_reward"]))
 
     return (
-        daily_rewards_training,
-        daily_rewards_eval,
-        episode_rewards_training,
-        episode_rewards_eval,
+        training_runs_daily,
+        training_runs_episode,
+        eval_runs_daily,
+        eval_runs_episode
     )
 
 
@@ -312,15 +326,15 @@ def setup_all_agents(
             agent_type = future_to_agent_type[future]
             try:
                 (
-                    daily_rewards_train,
-                    daily_rewards_eval,
-                    episode_rewards_train,
-                    episode_rewards_eval,
+                    training_runs_daily,
+                    training_runs_episode,
+                    eval_runs_daily,
+                    eval_runs_episode
                 ) = future.result()
-                training_results_daily[agent_type] = daily_rewards_train
-                eval_results_daily[agent_type] = daily_rewards_eval
-                training_results_episode[agent_type] = episode_rewards_train
-                eval_results_episode[agent_type] = episode_rewards_eval
+                training_results_daily[agent_type] = training_runs_daily
+                eval_results_daily[agent_type] = eval_runs_daily
+                training_results_episode[agent_type] = training_runs_episode
+                eval_results_episode[agent_type] = eval_runs_episode
             except Exception as e:
                 print(f"Error processing agent {agent_type}: {e}")
 

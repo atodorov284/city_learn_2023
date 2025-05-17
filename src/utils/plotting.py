@@ -22,6 +22,8 @@ def plot_single_agent(
         experiment_id: Experiment ID
     """
     mean_reward = np.array(rewards["mean_reward"])
+
+    # This needs to be changed with n amount of runs instead of the sem from one run
     sem_reward = np.array(rewards["sem_reward"])
     steps = range(1, len(mean_reward) + 1)
 
@@ -93,9 +95,11 @@ def plot_all_agents(
     colors = {"centralized": "blue", "decentralized": "red", "maml": "green"}
 
     # Plot each agent type
-    for agent_type, rewards in rewards_dict.items():
-        mean_reward = np.array(rewards["mean_reward"])
-        sem_rewards = np.array(rewards["sem_reward"])
+    for agent_type, reward_list in rewards_dict.items():
+        # take the mean of the n rewards lists making sure that you take the mean of all the first points, then the mean of all the second points, etc.
+        mean_reward = np.mean(reward_list, axis=0)
+        sem_rewards = np.std(reward_list, axis=0)
+        
         steps = range(1, len(mean_reward) + 1)
 
         # Plot raw rewards with low alpha
