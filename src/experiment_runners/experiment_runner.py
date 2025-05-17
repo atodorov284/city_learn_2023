@@ -338,6 +338,7 @@ def setup_all_agents(
             except Exception as e:
                 print(f"Error processing agent {agent_type}: {e}")
 
+    print("plotting agent comparisons")
     plot_all_agents(
         training_results_daily,
         plot_folder="plots/",

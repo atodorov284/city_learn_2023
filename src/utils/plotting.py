@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from scipy.stats import sem
 
 
 def plot_single_agent(
@@ -90,6 +91,7 @@ def plot_all_agents(
                      Format: {'centralized': [...], 'decentralized': [...], 'maml': [...]}
         plot_folder: Folder to save the plots in
     """
+    print("plotting big things")
     plt.figure(figsize=(12, 6))
 
     colors = {"centralized": "blue", "decentralized": "red", "maml": "green"}
@@ -98,7 +100,7 @@ def plot_all_agents(
     for agent_type, reward_list in rewards_dict.items():
         # take the mean of the n rewards lists making sure that you take the mean of all the first points, then the mean of all the second points, etc.
         mean_reward = np.mean(reward_list, axis=0)
-        sem_rewards = np.std(reward_list, axis=0)
+        sem_rewards = sem(reward_list, axis=0)
         
         steps = range(1, len(mean_reward) + 1)
 
